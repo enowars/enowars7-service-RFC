@@ -5,19 +5,21 @@ import hmac
 class Totp:
     """A class for generating and validating TOTPs"""
 
-    def __init__(self):
-        self.lookahead_window = 2
-        self.num_digits = 6
-        self.throttle = 42 #refuse connections after this many failed auth attempts
+    def __init__(self,
+                 num_digits: int=6,
+                 timestep_counter: int=0,
+                 ):
+
+        if num_digits > 10 OR num_digits < 6:
+            raise ValueError("The number of digits for the OTP must be between 6 and 10")
+        self.num_digits = num_digits
+        self.timestep_counter = timestep_counter
+        self.timestep = 30
         self.init_time = int(time.time()) #unix time in UTC
 
-        # timestep count is an int that is based on )the time that has past
-        # the value increases every thirty seconds (the timestep)
-        #note: the counter has to be somewhat synchronized between client and server
-        self.timestep_counter = 0 #with every full 30 seconds, the counter increases
-        self.timestep = 30
-
         self.digest = hashlib.sha1
+        self.throttle = 42 #refuse connections after this many failed auth attempts
+        self.lookahead = 2
         return
 
 #RFC4226 statest that the shaed secret must be of at least 128 bits, preferably 160 bits
@@ -28,14 +30,10 @@ class Totp:
         hashed_secret = hashlib.sha256(secret.encode())
         return hashed_secret.digest()
 
-    def validate_otp(self):
-       return
-
-    def generate_otp(self, timestep: int):
+   def generate_otp(self, shared_secret: str, timestep_counter: int):
         # for HOTP: HOTP(K,C) = Truncate(HMAC-SHA-1(K,C))
-        self.calculate_current_timestep_count()
         #returns 20 byte string
-#using timestep could be a vuln because then the output is always identical        hmac_result = hmac.new(self.generate_shared_secret(), bytes(timestep), self.digest)
+        #using timestep could be a vuln because then the output is always identical hmac_result = hmac.new(self.generate_shared_secret(), bytes(timestep), self.digest)
         hmac_result = hmac.new(self.generate_shared_secret(), bytes(self.timestep_counter), self.digest)
         bin_code = self.truncate(bytearray(hmac_result.digest()))
         return int(bin_code) % 10**self.num_digits
@@ -56,6 +54,35 @@ class Totp:
         self.timestep_counter = steps
         return
 
+    def validate_otp(self, user_otp: int, shared_secret: str):
+        self.calculate_current_timestep_count()
+        server_otp = self.generate_otp(shared_secret, self.timestep_counter)
+        if user_otp == server_otp:
+            return True
+        else:
+            match, offset = self.check_lookahead_window(user_otp, shared_secret)
+            self.resynchronize(offset)
+        return match
+
+    def check_lookahead_window(self, user_otp: int, shared_secret: str):
+        offset = self.lookahead+1
+        match = False
+
+        for i in range(1, self.lookahead+1):
+            if user_otp == self.generate_otp(shared_secret, self.timestep_counter+i):
+                offset = i
+                match = True
+                break
+
+        return match, offset
+
+    #TODO
+    def resynchronize(self, offset: int):
+        if offset > self.lookahead:
+            print("Out-of-sync! Could not find valid otp wihtin  lookahead window, resyncing.")
+        else:
+            print("Out-of-sync! Still found valid otp within lookahead.")
+        return
 
 class User:
     def __init__(self, username):
