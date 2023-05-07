@@ -10,6 +10,8 @@ def create_user(allusers):
         user1 = User(username)
     else:
         user1 = User(username, secret_phrase)
+
+    user1.generate_shared_secret()
     allusers.update({username: user1})
 
 def main():
@@ -25,6 +27,7 @@ def main():
                 continue
             elif action == "c":
                 create_user(allusers)
+                print("users: ", allusers)
             elif action == "o":
                 username = input("username in question: ")
                 userx = allusers[username]
@@ -33,7 +36,7 @@ def main():
                     continue
                 userx.calculate_current_timestep_count()
                 user_otp = userx.generate_otp(userx.secret_key, userx.timestep_counter)
-                print("computed user otp")
+                print(user_otp)
                 res = server.validate_otp(user_otp, userx.secret_key)
                 if res:
                     print("successfully genererated the OTP")
