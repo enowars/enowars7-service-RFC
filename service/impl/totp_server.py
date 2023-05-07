@@ -10,7 +10,7 @@ class Totp:
                  timestep_counter: int=0,
                  ):
 
-        if num_digits > 10 OR num_digits < 6:
+        if num_digits > 10 or num_digits < 6:
             raise ValueError("The number of digits for the OTP must be between 6 and 10")
         self.num_digits = num_digits
         self.timestep_counter = timestep_counter
@@ -25,16 +25,16 @@ class Totp:
 #RFC4226 statest that the shaed secret must be of at least 128 bits, preferably 160 bits
 #IDEA: user can provide their own key, and iof they do not, then a shared secret key is generated
 
-    def generate_shared_secret(self):
+    def generate_shared_secret(self, user_phrase: str=""):
         secret = "my personal secret"
         hashed_secret = hashlib.sha256(secret.encode())
         return hashed_secret.digest()
 
-   def generate_otp(self, shared_secret: str, timestep_counter: int):
+    def generate_otp(self, shared_secret: str, timestep_counter: int):
         # for HOTP: HOTP(K,C) = Truncate(HMAC-SHA-1(K,C))
         #returns 20 byte string
         #using timestep could be a vuln because then the output is always identical hmac_result = hmac.new(self.generate_shared_secret(), bytes(timestep), self.digest)
-        hmac_result = hmac.new(self.generate_shared_secret(), bytes(self.timestep_counter), self.digest)
+        hmac_result = hmac.new(shared_secret, bytes(self.timestep_counter), self.digest)
         bin_code = self.truncate(bytearray(hmac_result.digest()))
         return int(bin_code) % 10**self.num_digits
 
@@ -84,22 +84,3 @@ class Totp:
             print("Out-of-sync! Still found valid otp within lookahead.")
         return
 
-class User:
-    def __init__(self, username):
-        self.username = username
-        self.secret_key = None
-
-
-
-def main():
-    device = Totp()
-    while True:
-        try:
-            username = input("enter the username: ")
-            user1 = User(username)
-        except Exception as e:
-            print(e)
-        print(device.generate_otp(0))
-
-if __name__ == "__main__":
-    main()
