@@ -1,4 +1,6 @@
 import functools
+import string
+import random
 
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for
@@ -57,11 +59,21 @@ def login():
         if error is None:
             session.clear()
             session['user_id'] = user['id']
-            return redirect(url_for('index'))
+
+            #change redirect to TOTP page
+            #How to create a dynamic url that is temporary
+            dyn_url = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
+            return redirect(url_for("auth.totp", variable=dyn_url))
 
         flash(error)
 
     return render_template('auth/login.html')
+
+@bp.route('/login/<String: dyn_url>', methods=('GET', 'POST'))
+def totp(_user):
+    return render_template('auth/login.html')
+    #on successful totp, redirect as shown below
+    #return redirect(url_for('index'))
 
 @bp.before_app_request
 def load_logged_in_user():

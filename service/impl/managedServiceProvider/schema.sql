@@ -4,7 +4,10 @@ DROP TABLE IF EXISTS post;
 CREATE TABLE user (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE NOT NULL,
-  password TEXT NOT NULL
+  password TEXT NOT NULL,
+  salt TEXT NOT NULL,
+  shared_secret TEXT NOT NULL DEFAULT "my little secret",
+  init_time INTEGER
 );
 
 CREATE TABLE post (

@@ -6,14 +6,18 @@ import hmac
 class User:
     def __init__(self,
                  username: str,
-                 secret_phrase: str=""):
+                 secret_phrase: str="",
+                 num_digits: int=6):
 
         self.username = username
         self.secret_phrase = secret_phrase
-        self.secret_key = self.generate_shared_secret()
+        self.secret_key = ""
         self.init_time = time.time()
         self.timestep = 30
         self.timestep_counter = 0
+        if num_digits > 10 or num_digits < 6:
+            raise ValueError("The number of digits for the OTP must be between 6 and 10")
+        self.num_digits = num_digits
 
     def generate_shared_secret(self):
         if not self.secret_phrase:
