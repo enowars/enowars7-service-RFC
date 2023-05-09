@@ -2,6 +2,7 @@ import functools
 import string
 import random
 import time
+from totp_server import *
 
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for
