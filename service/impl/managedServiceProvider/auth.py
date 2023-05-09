@@ -1,6 +1,7 @@
 import functools
 import string
 import random
+import time
 
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for
@@ -27,8 +28,8 @@ def register():
         if error is None:
             try:
                 db.execute(
-                    "INSERT INTO user (username, password) VALUES (?, ?)",
-                    (username, generate_password_hash(password)),
+                    "INSERT INTO user (username, password) VALUES (?, ?, ?)",
+                    (username, generate_password_hash(password), time.time()),
                 )
                 db.commit()
             except db.IntegrityError:
