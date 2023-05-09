@@ -2,7 +2,7 @@ import importlib
 from totp_server import *
 from totp_client import *
 
-def create_user(allusers):
+def create_user(allusers, servers):
     username = input("enter the username: ")
     secret_phrase = input("enter secret phrase: ")
     user1 = None
@@ -12,12 +12,13 @@ def create_user(allusers):
         user1 = User(username, secret_phrase)
 
     user1.generate_shared_secret()
+    server = Totp()
     allusers.update({username: user1})
-
+    servers.update({username:server})
 def main():
 #    importlib.import_module("totp_server")
  #   importlib.import_module("totp_client")
-    server = Totp()
+    servers = dict()
     allusers = dict()
 
     while True:
@@ -26,7 +27,7 @@ def main():
             if not action:
                 continue
             elif action == "c":
-                create_user(allusers)
+                create_user(allusers, servers)
                 print("users: ", allusers)
             elif action == "o":
                 username = input("username in question: ")
@@ -37,7 +38,8 @@ def main():
                 userx.calculate_current_timestep_count()
                 user_otp = userx.generate_otp(userx.secret_key, userx.timestep_counter)
                 print(user_otp)
-                res = server.validate_otp(user_otp, userx.secret_key)
+                serverx = servers[username]
+                res = serverx.validate_otp(user_otp, userx.secret_key)
                 if res:
                     print("successfully genererated the OTP")
                 else:
