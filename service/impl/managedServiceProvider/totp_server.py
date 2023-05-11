@@ -29,7 +29,7 @@ class Totp:
     def generate_shared_secret(self, user_phrase: str=""):
         secret = user_phrase
         if not user_phrase:
-            secret = "my personal secret"
+            secret = "my little secret"
         hashed_secret = hashlib.sha256(secret.encode())
         return hashed_secret.digest()
 

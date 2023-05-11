@@ -1,5 +1,5 @@
 import importlib
-from totp_server import *
+from managedServiceProvider import totp_server
 from totp_client import *
 
 def create_user(allusers, servers):
@@ -12,7 +12,7 @@ def create_user(allusers, servers):
         user1 = User(username, secret_phrase)
 
     user1.generate_shared_secret()
-    server = Totp()
+    server = totp_server.Totp()
     allusers.update({username: user1})
     servers.update({username:server})
 def main():
