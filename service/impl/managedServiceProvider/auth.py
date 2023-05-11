@@ -62,17 +62,20 @@ def login():
             session.clear()
             session['user_id'] = user['id']
 
-            #change redirect to TOTP page
-            #How to create a dynamic url that is temporary
             dyn_url = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
-            return redirect(url_for("auth.totp", dyn_url=dyn_url))
+            return redirect(url_for("auth.totp", usern=username, dyn_url=dyn_url))
 
         flash(error)
 
     return render_template('auth/login.html')
 
-@bp.route('/login/<dyn_url>', methods=('GET', 'POST'))
-def totp(dyn_url):
+@bp.route('/login/<username>/<dyn_url>', methods=('GET', 'POST'))
+def totp(username, dyn_url):
+    if request.method == 'POST':
+        totp_server = Totp()
+        db = get_db()
+        error = None
+        
     return render_template('auth/totp.html')
     #on successful totp, redirect as shown below
     #return redirect(url_for('index'))
