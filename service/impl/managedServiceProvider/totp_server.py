@@ -8,6 +8,7 @@ class Totp:
     def __init__(self,
                  num_digits: int=6,
                  timestep_counter: int=0,
+                 init_time: int=int(time.time())
                  ):
 
         if num_digits > 10 or num_digits < 6:
@@ -15,7 +16,7 @@ class Totp:
         self.num_digits = num_digits
         self.timestep_counter = timestep_counter
         self.timestep = 30
-        self.init_time = int(time.time()) #unix time in UTC
+        self.init_time = init_time #unix time in UTC
 
         self.digest = hashlib.sha1
         self.throttle = 42 #refuse connections after this many failed auth attempts
@@ -26,7 +27,9 @@ class Totp:
 #IDEA: user can provide their own key, and iof they do not, then a shared secret key is generated
 
     def generate_shared_secret(self, user_phrase: str=""):
-        secret = "my personal secret"
+        secret = user_phrase
+        if not user_phrase:
+            secret = "my personal secret"
         hashed_secret = hashlib.sha256(secret.encode())
         return hashed_secret.digest()
 
