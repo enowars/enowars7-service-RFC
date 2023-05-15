@@ -67,14 +67,23 @@ def login():
 
             rand = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
             dyn_url = rand + "?" + str(username)
-            return redirect(url_for("auth.totp", dyn_url=dyn_url))#, dyn_url=dyn_url))
+            return redirect(url_for("auth.totp_login", dyn_url=dyn_url))#, dyn_url=dyn_url))
 
         flash(error)
 
     return render_template('auth/login.html')
 
+@bp.route('/completeRegistration/<dyn_url>', methods=('GET'))
+def totp_registration(dyn_url):
+    #assume the dyn url contains username and init_time
+    #This is okay for the prototype but not for the final service
+
+    init_time = dyn_url.split('?')[0]
+    username = dyn_url.split('?')[1]
+    return render_template("auth/totp_registration.html")
+
 @bp.route('/login/<dyn_url>', methods=('GET', 'POST'))
-def totp(dyn_url):
+def totp_login(dyn_url):
     if request.method == 'POST':
         db = get_db()
         username = dyn_url.split('?')[1]
@@ -82,7 +91,7 @@ def totp(dyn_url):
         query = db.execute(
             'SELECT init_time, shared_secret FROM user WHERE username = ?', (username,)
         ).fetchone()
-        
+
         print("name: ", username)
         print("secret:", query['shared_secret'])
         print("usercode: ", usercode)
@@ -90,7 +99,7 @@ def totp(dyn_url):
         totp = totp_server.Totp(init_time=query['init_time'])
         result = totp.validate_otp(int(usercode), totp.generate_shared_secret(str(query['shared_secret'])))
         error = None
-    return render_template('auth/totp.html')
+    return render_template('auth/totp_login.html')
     #on successful totp, redirect as shown below
     #return redirect(url_for('index'))
 

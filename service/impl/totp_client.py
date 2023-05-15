@@ -2,9 +2,7 @@ import time
 import hashlib
 import hmac
 
-
 class User:
-
     def __init__(self,
                  username: str,
                  secret_phrase: str
@@ -14,12 +12,12 @@ class User:
         self.client = None
 
 class Totp_Client:
-
     def __init__(self,
+                 init_time: int=int(time.time()),
                  num_digits: int=6):
 
         self.secret_key = ""
-        self.init_time = time.time()
+        self.init_time = init_time
         self.timestep = 30
         self.timestep_counter = 0
         if num_digits > 10 or num_digits < 6:
@@ -43,7 +41,6 @@ class Totp_Client:
         self.secret_key = secret_key_tmp.digest()
         return
 
-
     def generate_otp(self, shared_secret: bytes, timestep_counter: int):
         hmac_result = hmac.new(shared_secret, bytes(self.timestep_counter), hashlib.sha1)
         bin_code = self.truncate(bytearray(hmac_result.digest()))
@@ -65,26 +62,25 @@ class Totp_Client:
         self.timestep_counter = steps
         return
 
-
-
-
-def create_user(allusers, servers):
+def create_user(allusers):
     username = input("enter the username: ")
     secret_phrase = input("enter secret phrase: ")
-    server_init = int(input("init-time: "))
+    server_init = input("init-time: ")
     user1 = None
+
     if not secret_phrase:
-        user1 = User(username)
+        user1 = User(username, "my little secret")
     else:
         user1 = User(username, secret_phrase)
-
-    user1.generate_shared_secret()
-    server = totp_server.Totp()
+    if not server_init:
+        user1.client = Totp_Client()
+    else:
+        user1.client = Totp_Client(init_time=int(server_init))
+    print(user1)
+    user1.client.generate_shared_secret(user1.secret_phrase)
     allusers.update({username: user1})
-    servers.update({username:server})
+
 def main():
-#    importlib.import_module("totp_server")
- #   importlib.import_module("totp_client")
     servers = dict()
     allusers = dict()
 
@@ -94,7 +90,7 @@ def main():
             if not action:
                 continue
             elif action == "c":
-                create_user(allusers, servers)
+                create_user(allusers)
                 print("users: ", allusers)
             elif action == "o":
                 username = input("username in question: ")
@@ -102,15 +98,9 @@ def main():
                 if userx == None:
                     print("failure, user does not exist")
                     continue
-                userx.calculate_current_timestep_count()
-                user_otp = userx.generate_otp(userx.secret_key, userx.timestep_counter)
-                print(user_otp)
-                serverx = servers[username]
-                res = serverx.validate_otp(user_otp, userx.secret_key)
-                if res:
-                    print("successfully genererated the OTP")
-                else:
-                    print("failure")
+                userx.client.calculate_current_timestep_count()
+                user_otp = userx.client.generate_otp(userx.client.secret_key, userx.client.timestep_counter)
+                print(str(10000000+user_otp)[2:])
             else:
                 continue
 
