@@ -8,3 +8,4 @@ WORKDIR /service
 COPY . .
 
 RUN chmod +x entrypoint.sh
+ENTRYPOINT /service/entrypoint.sh
