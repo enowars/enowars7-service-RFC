@@ -1,0 +1,25 @@
+<!doctype html>
+<title>{% block title %}{% endblock %} - Flaskr</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<nav>
+    <h1> Secure TOTP </h1>
+</nav>
+<section class="content">
+  <header>
+    <h1>Your TOTP registraion info</h1>
+  </header>
+  {% for message in get_flashed_messages() %}
+    <div class="flash">{{ message }}</div>
+  {% endfor %}
+
+<ul>
+    {% if g.user %}
+    <li>username: {{g.user['username']}}</li>
+    <li>secret phrase: {{g.user['shared_secret']}}</li>
+    <li>initialization time: {{g.user['init_time']}}</li>  
+    {% endif %}
+</ul>
+<form action="" method="post">
+    <input type="submit" name="Ok" value="Got it! Go to Login">
+</form>
+</section>

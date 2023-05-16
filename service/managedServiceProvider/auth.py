@@ -16,9 +16,7 @@ bp = Blueprint('auth', __name__, url_prefix='/auth')
 @bp.route('/register', methods=('GET', 'POST'))
 def register():
     if request.method == 'POST':
-
         #TODO do not allow question mark chars in username --> redirect could fail
-
         username = request.form['username']
         password = request.form['password']
         db = get_db()
@@ -39,11 +37,30 @@ def register():
             except db.IntegrityError:
                 error = f"User {username} is already registered."
             else:
-                return redirect(url_for("auth.login"))
+                rand = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
+                dyn_url = rand + "?" + str(username)
+                return redirect(url_for("auth.totp_registration", dyn_url=dyn_url))
 
         flash(error)
 
     return render_template('auth/register.html')
+
+
+@bp.route('/completeRegistration/<dyn_url>', methods=('GET', 'POST'))
+def totp_registration(dyn_url):
+    #assume the dyn url contains username and init_time
+    #This is okay for the prototype but not for the final service
+    if request.method == 'POST':
+        return redirect(url_for("auth.login"))
+
+    init_time = dyn_url.split('?')[0]
+    username = dyn_url.split('?')[1]
+    g.user = get_db().execute(
+        'SELECT * FROM user WHERE username = ?', (username,)
+    ).fetchone()
+
+    return render_template("auth/totp_registration.html")
+
 
 @bp.route('/login', methods=('GET', 'POST'))
 def login():
@@ -64,30 +81,21 @@ def login():
         if error is None:
             session.clear()
             session['user_id'] = user['id']
-
             rand = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
             dyn_url = rand + "?" + str(username)
-            return redirect(url_for("auth.totp_login", dyn_url=dyn_url))#, dyn_url=dyn_url))
+            return redirect(url_for("auth.totp_login", dyn_url=dyn_url))
 
         flash(error)
 
     return render_template('auth/login.html')
 
-@bp.route('/completeRegistration/<dyn_url>', methods=('GET'))
-def totp_registration(dyn_url):
-    #assume the dyn url contains username and init_time
-    #This is okay for the prototype but not for the final service
-
-    init_time = dyn_url.split('?')[0]
-    username = dyn_url.split('?')[1]
-    return render_template("auth/totp_registration.html")
 
 @bp.route('/login/<dyn_url>', methods=('GET', 'POST'))
 def totp_login(dyn_url):
     if request.method == 'POST':
         db = get_db()
         username = dyn_url.split('?')[1]
-        usercode = request.form['code']
+        usercode = int(request.form['code'])
         query = db.execute(
             'SELECT init_time, shared_secret FROM user WHERE username = ?', (username,)
         ).fetchone()
@@ -99,7 +107,13 @@ def totp_login(dyn_url):
         totp = totp_server.Totp(init_time=query['init_time'])
         result = totp.validate_otp(int(usercode), totp.generate_shared_secret(str(query['shared_secret'])))
         error = None
-    return render_template('auth/totp_login.html')
+        if not result:
+            error = "failed to validate OTP. Try Again"
+        else:
+            return redirect(url_for("index"))
+
+        flash(error)
+    return render_template('auth/test_totp_login.html')
     #on successful totp, redirect as shown below
     #return redirect(url_for('index'))
 

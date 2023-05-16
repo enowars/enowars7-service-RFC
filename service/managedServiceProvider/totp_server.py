@@ -60,12 +60,13 @@ class Totp:
     def validate_otp(self, user_otp: int, shared_secret: str):
         self.calculate_current_timestep_count()
         server_otp = self.generate_otp(shared_secret, self.timestep_counter)
+        print(f"userotp: {user_otp} serverotp: {server_otp}")
         if user_otp == server_otp:
             return True
         else:
             match, offset = self.check_lookahead_window(user_otp, shared_secret)
             self.resynchronize(offset)
-        return match
+            return match
 
     def check_lookahead_window(self, user_otp: int, shared_secret: str):
         offset = self.lookahead+1

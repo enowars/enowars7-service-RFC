@@ -1,6 +1,7 @@
 import time
 import hashlib
 import hmac
+import argparse
 
 class User:
     def __init__(self,
@@ -81,22 +82,21 @@ def create_user(allusers):
     allusers.update({username: user1})
 
 def main():
-    servers = dict()
     allusers = dict()
 
     while True:
         try:
-            action = input("enter an action:\n\t c - create User \n\t o - calculate otp and have it validated.\n-->")
+            action = input("enter an action:\n\t c - create User \n\t o - calculate otp\n")
             if not action:
                 continue
             elif action == "c":
                 create_user(allusers)
-                print("users: ", allusers)
+                print("users:\t", allusers)
             elif action == "o":
-                username = input("username in question: ")
+                username = input("username in question:\t")
                 userx = allusers[username]
                 if userx == None:
-                    print("failure, user does not exist")
+                    print("\n failure, user does not exist\n")
                     continue
                 userx.client.calculate_current_timestep_count()
                 user_otp = userx.client.generate_otp(userx.client.secret_key, userx.client.timestep_counter)
