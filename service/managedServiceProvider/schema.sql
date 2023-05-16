@@ -5,7 +5,7 @@ CREATE TABLE user (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE NOT NULL,
   password TEXT NOT NULL,
-  shared_secret TEXT NOT NULL DEFAULT "my little secret",
+  shared_secret TEXT NOT NULL DEFAULT "Hier könnte Ihr Geheimnis stehen!",
   init_time INTEGER
 );
 

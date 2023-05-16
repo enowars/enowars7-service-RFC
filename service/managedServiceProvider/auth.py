@@ -19,6 +19,7 @@ def register():
         #TODO do not allow question mark chars in username --> redirect could fail
         username = request.form['username']
         password = request.form['password']
+        secret_phrase = request.form['secret phrase']
         db = get_db()
         error = None
 
@@ -26,6 +27,8 @@ def register():
             error = 'Username is required.'
         elif not password:
             error = 'Password is required.'
+        elif not secret_phrase:
+            error = "A secret phrase is required."
 
         if error is None:
             try:
