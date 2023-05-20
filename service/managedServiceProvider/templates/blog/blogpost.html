@@ -8,7 +8,6 @@
 {% endblock %}
 
 {% block content %}
-  {% for post in posts %}
     <article class="post">
       <header>
         <div>
@@ -19,11 +18,7 @@
           <a class="action" href="{{ url_for('blog.update', id=post['id']) }}">Edit</a>
         {% endif %}
       </header>
-      <a class="action" href="{{ url_for('auth.accessblogpost', id=post['id']) }}">View this Event</a>
-      <!-- <p class="body">{{ post['body'] }}</p> -->
+       <p class="body">{{ post['body'] }}</p> 
     </article>
-    {% if not loop.last %}
       <hr>
-    {% endif %}
-  {% endfor %}
 {% endblock %}

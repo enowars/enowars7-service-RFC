@@ -26,6 +26,17 @@ def create():
         title = request.form['title']
         body = request.form['body']
         error = None
+        is_private = None
+
+        try:
+            checkbox = request.form['private']
+            print(checkbox)
+            if checkbox == "True":
+                is_private = "TRUE"
+            else:
+                is_private = "FALSE"
+        except:
+            is_private = "FALSE"
 
         if not title:
             error = 'Title is required.'
@@ -35,9 +46,9 @@ def create():
         else:
             db = get_db()
             db.execute(
-                'INSERT INTO post (title, body, author_id)'
-                ' VALUES (?, ?, ?)',
-                (title, body, g.user['id'])
+                'INSERT INTO post (title, body, author_id, is_private)'
+                ' VALUES (?, ?, ?, ?)',
+                (title, body, g.user['id'], is_private)
             )
             db.commit()
             return redirect(url_for('blog.index'))
@@ -46,7 +57,7 @@ def create():
 
 def get_post(id, check_author=True):
     post = get_db().execute(
-        'SELECT p.id, title, body, created, author_id, username'
+        'SELECT p.id, title, body, created, author_id, is_private, username'
         ' FROM post p JOIN user u ON p.author_id = u.id'
         ' WHERE p.id = ?',
         (id,)

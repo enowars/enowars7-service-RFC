@@ -10,6 +10,10 @@
     <input name="title" id="title" value="{{ request.form['title'] }}" required>
     <label for="body">Body</label>
     <textarea name="body" id="body">{{ request.form['body'] }}</textarea>
+    <div>
+    <input type ="checkbox" id="private" name="private" value="True"> 
+    <label for="private">Is this a private event?</label>
+    </div>
     <input type="submit" value="Save">
   </form>
 {% endblock %}

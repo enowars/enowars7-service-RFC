@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1>{% block title %}Account Information{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+  <form method="post">
+    <label for="username">Username</label>
+    <input name="username" id="username" value={{g.user['username']}} minlength="3" maxlength="15" required>
+    <input type="submit" value="Update Account Information">
+  </form>
+
+  <div>
+    <h3>Create New Event</h3>
+    <form method="post">
+      <input type="submit" value="Create">
+    </form>
+  </div>
+{% endblock %}
