@@ -1,6 +1,8 @@
 import time
 import hashlib
 import hmac
+from datetime import timezone
+import datetime
 
 class Totp:
     """A class for generating and validating TOTPs"""
@@ -52,7 +54,8 @@ class Totp:
         return bin_code
 
     def calculate_current_timestep_count(self):
-        time_diff = int(time.time() - self.init_time) # floor the diff or fllor individually?
+        dt = datetime.datetime.now(timezone.utc)
+        time_diff = int(dt.timestamp()) - int(self.init_time) # floor the diff or fllor individually?
         steps = int(time_diff/self.timestep)
         self.timestep_counter = steps
         return

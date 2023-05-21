@@ -2,6 +2,8 @@ import functools
 import string
 import random
 import time
+from datetime import timezone
+import datetime
 from . import totp_server
 
 from flask import (
@@ -113,15 +115,11 @@ def totp_login(dyn_url):
             'SELECT init_time, shared_secret FROM user WHERE username = ?', (username,)
         ).fetchone()
 
-        print("name: ", username)
-        print("secret:", query['shared_secret'])
-        print("usercode: ", usercode)
-
         totp = totp_server.Totp(init_time=query['init_time'])
         result = totp.validate_otp(int(usercode), totp.generate_shared_secret(str(query['shared_secret'])))
         error = None
         if not result:
-            error = "failed to validate OTP. Try Again"
+            error = "Wrong passcode. Try again!"
         else:
             return redirect(url_for("index"))
 
@@ -129,6 +127,15 @@ def totp_login(dyn_url):
     return render_template('auth/test_totp_login.html')
     #on successful totp, redirect as shown below
     #return redirect(url_for('index'))
+
+def convert_str_to_unixtimestamp(timestr: str):
+    date, timec = timestr.split(' ', 1)
+    datecomp=date.split('-')
+    timec = timec.split('.', 1)[0]
+    timecomp=timec.split(':')
+    dto = datetime.datetime(int(datecomp[0]), int(datecomp[1]), int(datecomp[2]), int(timecomp[0]), int(timecomp[1]), int(timecomp[2]), tzinfo=timezone.utc)
+    print("returning")
+    return dto.timestamp()
 
 @bp.route('/accessblogpost/<int:id>', methods=('GET', 'POST'))
 @login_required
@@ -140,32 +147,33 @@ def accessblogpost(id):
 
     #TODO when post, we should ONLY attempt to validate TOTP
     if request.method == 'POST':
+        print("processing post...")
         db = get_db()
         query = db.execute(
-            'SELECT title, body, created, author_id, is_private, id FROM post WHERE id = ?', (id,)
+            'SELECT title, body, created, author_id, key, is_private, id FROM post WHERE id = ?', (id,)
         ).fetchone()
 
-        if g.user['id'] == query['author_id']:
-            return render_template('blog/blogpost.html', post=query)
-        elif not query['is_private']:
-            return render_template('blog/blogpost.html', post=query)
+        usercode = request.form['code']
+        print("usercode: ", usercode)
+        blogpost_creation_time = convert_str_to_unixtimestamp(str(query['created']))
+        print("this is: ", blogpost_creation_time)
+        totp = totp_server.Totp(init_time=blogpost_creation_time)
+        result = totp.validate_otp(int(usercode), totp.generate_shared_secret(query['key']))
+        error = None
+        if not result:
+            error = "Wrong passcode. Try again!"
         else:
-           # usercode = request.method['usercode']
-            #totp = totp_server.Totp(init_time=query['init_time'])
-            #result = totp.validate_otp(int(usercode), totp.generate_shared_secret(str(query['event_key'])))
-            #error = None
-            #if not result:
-            error = "failed to validate OTP. Try Again"
-            #else:
-             #   return redirect(url_for("index"))
-            flash(error)
+            return render_template('blog/blogpost.html', post=query)
+        flash(error)
 
     elif request.method == 'GET':
         db = get_db()
+
+        #change query to make username displayable in html
         query = db.execute(
             'SELECT title, body, created, author_id, is_private, id FROM post WHERE id = ?', (id,)
         ).fetchone()
-        print(query['created'])
+
         if g.user['id'] == query['author_id']:
             return render_template('blog/blogpost.html', post=query)
         elif query['is_private'] == "FALSE":

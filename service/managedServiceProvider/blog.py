@@ -1,6 +1,8 @@
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, url_for
 )
+from datetime import timezone
+import datetime
 from werkzeug.exceptions import abort
 
 from managedServiceProvider.auth import login_required
@@ -18,19 +20,19 @@ def index():
     ).fetchall()
     return render_template('blog/index.html', posts=posts)
 
-
 @bp.route('/create', methods=('GET', 'POST'))
 @login_required
 def create():
     if request.method == 'POST':
-        title = request.form['title']
-        body = request.form['body']
         error = None
+        title = request.form['title']
+        if len(title) > 100:
+            error = "The title length exceeds the character limit."
+        body = request.form['body']
         is_private = None
 
         try:
             checkbox = request.form['private']
-            print(checkbox)
             if checkbox == "True":
                 is_private = "TRUE"
             else:
@@ -40,15 +42,18 @@ def create():
 
         if not title:
             error = 'Title is required.'
-
+        if not body:
+            error = 'The post must not be empty!'
         if error is not None:
             flash(error)
         else:
+            key = title + g.user['username']
+            print("created the following key: ", key)
             db = get_db()
             db.execute(
-                'INSERT INTO post (title, body, author_id, is_private)'
-                ' VALUES (?, ?, ?, ?)',
-                (title, body, g.user['id'], is_private)
+                'INSERT INTO post (title, body, author_id, key, is_private)'
+                ' VALUES (?, ?, ?, ?, ?)',
+                (title, body, g.user['id'], key, is_private)
             )
             db.commit()
             return redirect(url_for('blog.index'))
@@ -68,7 +73,6 @@ def get_post(id, check_author=True):
 
     if check_author and post['author_id'] != g.user['id']:
         abort(403)
-
     return post
 
 @bp.route('/<int:id>/update', methods=('GET', 'POST'))

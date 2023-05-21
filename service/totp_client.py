@@ -2,7 +2,8 @@ import time
 import hashlib
 import hmac
 import argparse
-
+import datetime
+from datetime import timezone
 class User:
     def __init__(self,
                  username: str,
@@ -58,7 +59,8 @@ class Totp_Client:
         return bin_code
 
     def calculate_current_timestep_count(self):
-        time_diff = int(time.time() - self.init_time) # floor the diff or fllor individually?
+        dt = datetime.datetime.now(timezone.utc)
+        time_diff = int(dt.timestamp()) - int(self.init_time) # floor the diff or fllor individually?
         steps = int(time_diff/self.timestep)
         self.timestep_counter = steps
         return
