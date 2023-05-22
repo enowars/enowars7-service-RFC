@@ -166,6 +166,23 @@ async def getflag_zero(
     assert_in(task.flag, r.text, "The flag could not be retrieved in the getflag method.")
     return
 
+def find_params(r, username, postid):
+    html = BeautifulSoup(r.text, "html.parser")
+    el_article = html.find_all('article', attrs={"class":"post"})
+    for article in el_article:
+        el_div = article.find("div", attrs={"class":"about"})
+        spliddy = el_div.string.split(' ')
+        name = spliddy[1]
+        time = spliddy[-1]
+        if name == username:
+            el_a = article.find('a', attrs={"class":"action"})
+            post_id = el_a['href'].split('/')[-1]
+            if str(postid) == str(post_id):
+                return time
+            else:
+                continue
+    raise MumbleException("post could not be found")
+
 @checker.explpoit(0)
 async def exploit_zero(task: ExploitCheckerTaskMessage,
                        searcher: FlagSearcher,
@@ -192,17 +209,6 @@ async def exploit_zero(task: ExploitCheckerTaskMessage,
     url = "http://" + task.address + str(SERVICE_PORT) + "/"
     r = await client.get(url, cookies=cookie)
 
-    html = BeautifulSoup(r.text, "html.parser")
-    el_div = html.find('div', attrs={"class":"about"})
-    while el_div not None:
-        spliddy = sibling_div.string.split(' ')
-        name = spliddy[1]
-        time = spliddy[-1]
-        if name == username
-        el_div = el_div.find_next("div", attrs={"class":"about"})
+    time = find_params(r, username, postid)
 
-
-
-
-
-    pass
+    return
