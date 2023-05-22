@@ -20,7 +20,6 @@
         {% endif %}
       </header>
       <a class="action" href="{{ url_for('auth.accessblogpost', id=post['id']) }}">View this Event</a>
-      <!-- <p class="body">{{ post['body'] }}</p> -->
     </article>
     {% if not loop.last %}
       <hr>

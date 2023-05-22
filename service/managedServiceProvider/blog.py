@@ -50,13 +50,21 @@ def create():
             key = title + g.user['username']
             print("created the following key: ", key)
             db = get_db()
-            db.execute(
-                'INSERT INTO post (title, body, author_id, key, is_private)'
-                ' VALUES (?, ?, ?, ?, ?)',
-                (title, body, g.user['id'], key, is_private)
-            )
-            db.commit()
-            return redirect(url_for('blog.index'))
+            try:
+                db.execute(
+                    'INSERT INTO post (title, body, author_id, key, is_private)'
+                    ' VALUES (?, ?, ?, ?, ?)',
+                    (title, body, g.user['id'], key, is_private)
+                )
+                db.commit()
+            except:
+                error = "The given title already exists. Try again!"
+                flash(error)
+                return render_template('blog/create.html')
+
+            query = db.execute('SELECT id, body FROM post WHERE title = ? AND author_id = ?', (title, g.user['id'])).fetchone()
+
+            return redirect(url_for('auth.accessblogpost', id=query['id']))
 
     return render_template('blog/create.html')
 

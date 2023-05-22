@@ -98,7 +98,8 @@ def login():
             session['user_id'] = user['id']
             rand = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
             dyn_url = rand + "?" + str(username)
-            return redirect(url_for("auth.totp_login", dyn_url=dyn_url))
+            return redirect(url_for("blog.index"))
+            #return redirect(url_for("auth.totp_login", dyn_url=dyn_url))
 
         flash(error)
 
