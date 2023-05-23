@@ -136,9 +136,9 @@ async def putflag_zero(
         - logout
     """
     flag = task.flag
-    username, password, secret = register_user(task, client)
-    cookie = login_user(task, client, username, password)
-    title, postid = create_blogpost(cookie, flag)
+    username, password, secret = await register_user(task, client)
+    cookie = await login_user(task, client, username, password)
+    title, postid = await create_blogpost(cookie, flag)
 
     await db.set("nec_info", (username, password, secret, title, postid))
     attackinfo = {"title": title, "postid": postid}
@@ -161,7 +161,7 @@ async def getflag_zero(
     except KeyError:
         #is mumble here correct or will lead to deduction in points?
         raise MumbleException("Missing database entry from putflag operation.")
-    cookie = login_user(task, client, userdata['username'], userdata['password'])
+    cookie = await login_user(task, client, userdata['username'], userdata['password'])
     url = "http://" + task.address + str(SERVICE_PORT) + "/auth/accessblogpost/" + userdata['postid']
     r = await client.get(url, cookies=cookie)
     #assert_equals()
@@ -215,8 +215,8 @@ async def exploit_zero(task: ExploitCheckerTaskMessage,
     title = attackinfo['title']
     postid = attackinfo['postid']
 
-    username, password, secret = register_user(task, client)
-    cookie = login_user(task, client, username, password)
+    username, password, secret = await register_user(task, client)
+    cookie = await login_user(task, client, username, password)
 
     url = "http://" + task.address + str(SERVICE_PORT) + "/"
     r = await client.get(url, cookies=cookie)
