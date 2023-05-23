@@ -25,7 +25,7 @@ from httpx import AsyncClient
 """
 
 """
-SERVICE_PORT = 4242
+SERVICE_PORT = 5000
 checker = Enochecker("OnlyBlog", SERVICE_PORT)
 app = lambda: checker.app
 """
@@ -34,7 +34,7 @@ app = lambda: checker.app
 
 class Totp_Client:
     def __init__(self,
-                 init_time: int=int(time.time()),
+                 init_time,
                  num_digits: int=6):
 
         self.secret_key = ""
@@ -91,7 +91,7 @@ async def register_user(task, client):
     secret = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
 
     logger.debug(f"New user registration. Username: {username}, Password: {password}")
-    url = "http://" + task.address + ':' + str(SERVICE_PORT)} + "/auth/register"
+    url = "http://" + task.address + ':' + str(SERVICE_PORT) + "/auth/register"
     formdata = {"username": username, "password": password, "secret phrase": secret}
     r = await client.post(url, json=formdata)
     assert_equals(r.status_code, 302, "Registration error in register user function.")
@@ -99,7 +99,7 @@ async def register_user(task, client):
 
 async def login_user(task, client, username, password):
     logger.debug(f"Logging in user: {username}, with password: {password}")
-    url =  "http://" + task.address + ':' + str(SERVICE_PORT)} + "/auth/login"
+    url =  "http://" + task.address + ':' + str(SERVICE_PORT) + "/auth/login"
     formdata = {"username": username, "password": password}
     r = await client.post(url, json=formdata)
     assert_equals(r.status_code, 302, "Login Error in login_user function.")
@@ -110,7 +110,7 @@ async def create_blogpost(cookie, flag):
     body = flag
     private = "True"
     formdata = {"title": title, "body": body, "private": private}
-    url =  "http://" + task.address + ':' + str(SERVICE_PORT)} + "/create"
+    url =  "http://" + task.address + ':' + str(SERVICE_PORT) + "/create"
     r = await client.post(url, json=formdata, cookies=cookie)
 
     html = BeautifulSoup(r.text, "html.parser")
@@ -146,7 +146,7 @@ async def putflag_zero(
 
 @checker.getflag(0)
 async def getflag_zero(
-    task: GetflagCheckerTaskMessage
+    task: GetflagCheckerTaskMessage,
     client: AsyncClient,
     db: ChainDB
 ) -> None:
@@ -195,7 +195,7 @@ def convert_str_to_unixtimestamp(timestr: str):
     print("returning")
     return dto.timestamp()
 
-@checker.explpoit(0)
+@checker.exploit(0)
 async def exploit_zero(task: ExploitCheckerTaskMessage,
                        searcher: FlagSearcher,
                        client: AsyncClient
