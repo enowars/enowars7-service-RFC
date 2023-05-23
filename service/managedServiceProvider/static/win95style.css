@@ -1,23 +1,26 @@
 html {
   font-family: sans-serif;
-  background: #eee;
+  background: teal;
   padding: 1rem;
 }
 
 body {
   max-width: 960px;
   margin: 0 auto;
-  background: white;
+  font-family: "MS Sans Serif",Tahoma,Verdana,Segoe,sans-serif; 
+  background: lightgray;
+  color: white;
+  padding-bottom: 28px;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: serif;
+  font-family: "MS Sans Serif",Tahoma,Verdana,Segoe,sans-serif; 
   color: #377ba8;
   margin: 1rem 0;
 }
 
 a {
-  color: #377ba8;
+  color:#2d49eb;
 }
 
 hr {
@@ -92,7 +95,7 @@ nav ul li a, nav ul li span, header .action {
 }
 
 .post .about {
-  color: slategray;
+  color: teal;
   font-style: italic;
 }
 

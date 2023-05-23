@@ -85,7 +85,7 @@ class Totp_Client:
         return
 
 
-async def register_user(task, client):
+async def register_user(task, client, logger):
     username = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(10))
     password = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
     secret = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
@@ -97,7 +97,7 @@ async def register_user(task, client):
     assert_equals(r.status_code, 302, "Registration error in register user function.")
     return username, password, secret
 
-async def login_user(task, client, username, password):
+async def login_user(task, client, logger, username, password):
     logger.debug(f"Logging in user: {username}, with password: {password}")
     url =  "http://" + task.address + ':' + str(SERVICE_PORT) + "/auth/login"
     formdata = {"username": username, "password": password}
@@ -136,8 +136,8 @@ async def putflag_zero(
         - logout
     """
     flag = task.flag
-    username, password, secret = await register_user(task, client)
-    cookie = await login_user(task, client, username, password)
+    username, password, secret = await register_user(task, client, logger)
+    cookie = await login_user(task, client, logger, username, password)
     title, postid = await create_blogpost(cookie, flag)
 
     await db.set("nec_info", (username, password, secret, title, postid))
