@@ -27,3 +27,4 @@ Service and checker repository for the upcoming enowars7 attack-defense CTF comp
 - change the key-derivation for TOTP
 - think of a way to fix the vulnerability, without 'destroying' the service and checker
 - Make database persistent between docker deployments
+- Change the web server from development to production-grade server
