@@ -11,6 +11,17 @@
       value="{{ request.form['title'] or post['title'] }}" required>
     <label for="body">Body</label>
     <textarea name="body" id="body">{{ request.form['body'] or post['body'] }}</textarea>
+    {%if post.is_private == "TRUE"%}
+    <div>
+      <input type ="checkbox" id="private" name="private" value="True" checked> 
+      <label for="private">Is this a private event?</label>
+    </div>
+    {% else %}
+    <div>
+      <input type ="checkbox" id="private" name="private" value="True"> 
+      <label for="private">Is this a private event?</label>
+    </div>
+    {% endif%}
     <input type="submit" value="Save">
   </form>
   <hr>

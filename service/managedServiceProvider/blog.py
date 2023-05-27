@@ -91,8 +91,16 @@ def update(id):
     if request.method == 'POST':
         title = request.form['title']
         body = request.form['body']
-        error = None
+        try:
+            checkbox = request.form['private']
+            if checkbox == "True":
+                is_private = "TRUE"
+            else:
+                is_private = "FALSE"
+        except:
+            is_private = "FALSE"
 
+        error = None
         if not title:
             error = 'Title is required.'
 
@@ -101,9 +109,9 @@ def update(id):
         else:
             db = get_db()
             db.execute(
-                'UPDATE post SET title = ?, body = ?'
+                'UPDATE post SET title = ?, body = ?, is_private = ?'
                 ' WHERE id = ?',
-                (title, body, id)
+                (title, body, is_private, id)
             )
             db.commit()
             return redirect(url_for('blog.index'))

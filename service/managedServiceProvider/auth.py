@@ -25,23 +25,30 @@ def login_required(view):
 
     return wrapped_view
 
+
+def check_registration_data(username, password, rpassword, secret_phrase):
+    error = None
+    if not username or len(username) < 3:
+        error = 'Username is required and has to be at least 3 characters long.'
+    elif not password or len(password) < 5:
+        error = 'Password is required and has to be at least 5 characters long.'
+    elif password != rpassword:
+        error = 'Passwords do not match.'
+    elif not secret_phrase or len(secret_phrase) < 20:
+        error = "A secret phrase is required and has to be at least 20 characters long."
+    return error
+
+
 @bp.route('/register', methods=('GET', 'POST'))
 def register():
     if request.method == 'POST':
-        #TODO do not allow question mark chars in username --> redirect could fail
         username = request.form['username']
         password = request.form['password']
+        rpassword = request.form['rpassword']
         secret_phrase = request.form['secret phrase']
+        error = check_registration_data(username, password, rpassword, secret_phrase)
+
         db = get_db()
-        error = None
-
-        if not username:
-            error = 'Username is required.'
-        elif not password:
-            error = 'Password is required.'
-        elif not secret_phrase:
-            error = "A secret phrase is required."
-
         if error is None:
             try:
                 db.execute(
@@ -52,10 +59,10 @@ def register():
             except db.IntegrityError:
                 error = f"User {username} is already registered."
             else:
-                rand = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
-                dyn_url = rand + "?" + str(username)
-                return redirect(url_for("auth.totp_registration", dyn_url=dyn_url))
-
+                #rand = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
+                #dyn_url = rand + "?" + str(username)
+                #return redirect(url_for("auth.totp_registration", dyn_url=dyn_url))
+                return redirect(url_for("auth.login"))
         flash(error)
 
     return render_template('auth/register.html')
