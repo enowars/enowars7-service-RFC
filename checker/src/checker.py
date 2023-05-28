@@ -92,7 +92,7 @@ async def register_user(task, client, logger):
 
     logger.debug(f"New user registration. Username: {username}, Password: {password}")
     url = "http://" + task.address + ':' + str(SERVICE_PORT) + "/auth/register"
-    formdata = {"username": username, "password": password, "secret phrase": secret}
+    formdata = {"username": username, "password": password, "rpassword": password, "secret phrase": secret}
     r = await client.post(url, json=formdata)
     assert_equals(r.status_code, 302, "Registration error in register user function.")
     return username, password, secret
@@ -105,11 +105,15 @@ async def login_user(task, client, logger, username, password):
     assert_equals(r.status_code, 302, "Login Error in login_user function.")
     return r.cookies
 
-async def create_blogpost(cookie, flag):
+async def create_blogpost(cookie, flag, is_private):
     title = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
     body = flag
-    private = "True"
-    formdata = {"title": title, "body": body, "private": private}
+    if is_private:
+        private = "True"
+        formdata = {"title": title, "body": body, "private": private}
+    else:
+        formdata = {"title": title, "body": body}
+
     url =  "http://" + task.address + ':' + str(SERVICE_PORT) + "/create"
     r = await client.post(url, json=formdata, cookies=cookie)
 
@@ -138,7 +142,7 @@ async def putflag_zero(
     flag = task.flag
     username, password, secret = await register_user(task, client, logger)
     cookie = await login_user(task, client, logger, username, password)
-    title, postid = await create_blogpost(cookie, flag)
+    title, postid = await create_blogpost(cookie, flag, True) #True makes blogpost private
 
     await db.set("nec_info", (username, password, secret, title, postid))
     attackinfo = {"title": title, "postid": postid}
