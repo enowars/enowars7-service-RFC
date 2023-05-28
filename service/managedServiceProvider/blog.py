@@ -14,22 +14,29 @@ bp = Blueprint('blog', __name__)
 def index():
     db = get_db()
     posts = db.execute(
-        'SELECT p.id, title, body, created, author_id, username'
+        'SELECT p.id, title, body, created, author_id, is_hidden, username'
         ' FROM post p JOIN user u ON p.author_id = u.id'
         ' ORDER BY created DESC'
     ).fetchall()
     return render_template('blog/index.html', posts=posts)
 
+def check_event_params(title, body):
+    error = None
+    if not title or len(title) > 50:
+        error = "The title must neither be empty, nor exceed 50 characters."
+    elif not body or len(body) > 500:
+        error = "The events needs a concise description."
+    return error
+
 @bp.route('/create', methods=('GET', 'POST'))
 @login_required
 def create():
     if request.method == 'POST':
-        error = None
         title = request.form['title']
-        if len(title) > 100:
-            error = "The title length exceeds the character limit."
         body = request.form['body']
+        error = check_event_params(title, body)
         is_private = None
+        is_hidden = None
 
         try:
             checkbox = request.form['private']
@@ -40,21 +47,26 @@ def create():
         except:
             is_private = "FALSE"
 
-        if not title:
-            error = 'Title is required.'
-        if not body:
-            error = 'The post must not be empty!'
+        try:
+            checkbox = request.form['hidden']
+            if checkbox == "True":
+                is_hidden = "TRUE"
+            else:
+                is_hidden = "FALSE"
+        except:
+            is_hidden = "FALSE"
+
         if error is not None:
             flash(error)
         else:
-            key = title + g.user['username']
+            key = request.form['title'] + g.user['username']
             print("created the following key: ", key)
             db = get_db()
             try:
                 db.execute(
-                    'INSERT INTO post (title, body, author_id, key, is_private)'
-                    ' VALUES (?, ?, ?, ?, ?)',
-                    (title, body, g.user['id'], key, is_private)
+                    'INSERT INTO post (title, body, author_id, key, is_private, is_hidden)'
+                    ' VALUES (?, ?, ?, ?, ?, ?)',
+                    (title, body, g.user['id'], key, is_private, is_hidden)
                 )
                 db.commit()
             except:
@@ -70,7 +82,7 @@ def create():
 
 def get_post(id, check_author=True):
     post = get_db().execute(
-        'SELECT p.id, title, body, created, author_id, is_private, username'
+        'SELECT p.id, title, body, created, author_id, is_private, username, is_hidden'
         ' FROM post p JOIN user u ON p.author_id = u.id'
         ' WHERE p.id = ?',
         (id,)
@@ -91,6 +103,10 @@ def update(id):
     if request.method == 'POST':
         title = request.form['title']
         body = request.form['body']
+        error = check_event_params(title, body)
+        is_private = None
+        is_hidden = None
+
         try:
             checkbox = request.form['private']
             if checkbox == "True":
@@ -100,18 +116,23 @@ def update(id):
         except:
             is_private = "FALSE"
 
-        error = None
-        if not title:
-            error = 'Title is required.'
+        try:
+            checkbox = request.form['hidden']
+            if checkbox == "True":
+                is_hidden = "TRUE"
+            else:
+                is_hidden = "FALSE"
+        except:
+            is_hidden = "FALSE"
 
         if error is not None:
             flash(error)
         else:
             db = get_db()
             db.execute(
-                'UPDATE post SET title = ?, body = ?, is_private = ?'
+                'UPDATE post SET title = ?, body = ?, is_private = ?, is_hidden = ?'
                 ' WHERE id = ?',
-                (title, body, is_private, id)
+                (title, body, is_private, is_hidden, id)
             )
             db.commit()
             return redirect(url_for('blog.index'))

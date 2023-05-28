@@ -11,11 +11,20 @@
     <label for="body">Body</label>
     <textarea name="body" id="body">{{ request.form['body'] }}</textarea>
     <div>
-    <input type ="checkbox" id="private" name="private" value="True"> 
-    <label for="private">Is this a private event?</label>
+      <input type ="checkbox" id="private" name="private" value="True"> 
+      <label for="private">Is this a private event?</label>
+    <p>Private events listed on the index. Their details can only bes accessed by invited users, using a TOTP. You can change the public/private status at any time.</p>
     </div>
-    <label for="inviteuser">Do you want to invite other people to this event?</label>
-    <input name="inviteuser" id="inviteuser" minlength="3" maxlength="15" required>
+    <div>
+      <input type ="checkbox" id="hidden" name="hidden" value="True"> 
+      <label for="hidden">Do you wish to hide this event for now?</label>
+    <p>Hidden events are not listed on the index. Otherwise, they behave like private events. You can change the visibility status any time.</p>
+    </div>
+    <div>
+      <label for="inviteuser">Do you want to invite other people to this event?</label>
+      <input name="inviteuser" id="inviteuser" minlength="3" maxlength="15">
+      <p>Invited users receive relevant information to access your event, when you choose to make it private or hide it.</p>
+    </div>
     <input type="submit" value="Save">
   </form>
 {% endblock %}

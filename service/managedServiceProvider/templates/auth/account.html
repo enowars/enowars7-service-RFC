@@ -1,20 +1,34 @@
 {% extends 'base.html' %}
 
-{% block header %}
-  <h1>{% block title %}Account Information{% endblock %}</h1>
-{% endblock %}
 
 {% block content %}
+  <h3>User Information</h3>
   <form method="post">
     <label for="username">Username</label>
     <input name="username" id="username" value={{g.user['username']}} minlength="3" maxlength="15" required>
     <input type="submit" value="Update">
   </form>
 
-  <div>
-    <h3>Create New Event</h3>
-    <form method="post">
-      <input type="submit" value="Create">
+  <h3>My Events</h3>
+    <form action="{{ url_for('blog.create') }}">
+      <input type="submit" value="Create new Event">
     </form>
-  </div>
+ {% for post in posts %}
+    {% if g.user['id'] == post['author_id'] %}
+      <article class="post">
+        <header>
+          <div>
+            <h1>{{ post['title'] }}</h1>
+            <div class="about">by {{ post['username'] }} on {{ post['created'].strftime('%Y-%m-%d %H:%M:%S') }}</div>
+          </div>
+          <a class="action" href="{{ url_for('blog.update', id=post['id']) }}">Edit</a>
+        </header>
+        <a class="action" href="{{ url_for('auth.accessblogpost', id=post['id']) }}">View this Event</a>
+      </article>
+      {% if not loop.last %}
+        <hr>
+      {% endif %}
+    {% endif %}
+
+  {% endfor %}
 {% endblock %}

@@ -158,7 +158,7 @@ def accessblogpost(id):
         print("processing post...")
         db = get_db()
         query = db.execute(
-            'SELECT title, body, created, author_id, key, is_private, id FROM post WHERE id = ?', (id,)
+            'SELECT title, body, created, author_id, key, is_private, is_hidden, id FROM post WHERE id = ?', (id,)
         ).fetchone()
 
         usercode = request.form['code']
@@ -179,12 +179,14 @@ def accessblogpost(id):
 
         #change query to make username displayable in html
         query = db.execute(
-            'SELECT title, body, created, author_id, is_private, id FROM post WHERE id = ?', (id,)
+            'SELECT title, body, created, author_id, is_private, is_hidden, p.id, username'
+            ' FROM post p JOIN user u ON p.author_id = u.id'
+            ' WHERE p.id = ?', (id,)
         ).fetchone()
 
         if g.user['id'] == query['author_id']:
             return render_template('blog/blogpost.html', post=query)
-        elif query['is_private'] == "FALSE":
+        elif query['is_hidden'] == "FALSE" and query['is_private'] == "FALSE":
             return render_template('blog/blogpost.html', post=query)
         else:
             return render_template('auth/test_totp_login.html')
@@ -221,7 +223,16 @@ def access_event(eventinfo):
     return render_template('auth/test_totp_login.html')
 
 @bp.route('/accountInfo', methods=('GET', 'POST'))
+@login_required
 def account_info():
+    db = get_db()
+    #TODO currently query returns all blogposts
+    posts = db.execute(
+        'SELECT p.id, title, body, created, author_id, is_hidden, username'
+        ' FROM post p JOIN user u ON p.author_id = u.id'
+        ' ORDER BY created DESC'
+    ).fetchall()
+
     if request.method == 'POST':
         if g.user == None:
             abort(404, "You have to be logged in to view this page")
@@ -239,7 +250,7 @@ def account_info():
                 error = "Failed to update the username..."
 
             flash(error)
-    return render_template('auth/account.html')
+    return render_template('auth/account.html', posts=posts)
 
 
 @bp.before_app_request

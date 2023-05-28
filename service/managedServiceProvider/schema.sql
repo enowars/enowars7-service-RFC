@@ -17,6 +17,7 @@ CREATE TABLE post (
   title TEXT UNIQUE NOT NULL,
   body TEXT NOT NULL,
   is_private INTEGER NOT NULL DEFAULT FALSE,
+  is_hidden INTEGER NOT NULL DEFAULT FALSE,
   key TEXT NOT NULL,
   FOREIGN KEY (author_id) REFERENCES user (id)
 );

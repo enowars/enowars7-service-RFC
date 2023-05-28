@@ -14,14 +14,30 @@
     {%if post.is_private == "TRUE"%}
     <div>
       <input type ="checkbox" id="private" name="private" value="True" checked> 
-      <label for="private">Is this a private event?</label>
+      <label for="private">This event is currently private! Untick the box to make it public.</label>
     </div>
     {% else %}
     <div>
       <input type ="checkbox" id="private" name="private" value="True"> 
-      <label for="private">Is this a private event?</label>
+      <label for="private">This event is currently public! Tick the box to make it private.</label>
     </div>
     {% endif%}
+    {%if post.is_hidden == "TRUE"%}
+    <div>
+      <input type ="checkbox" id="hidden" name="hidden" value="True" checked> 
+      <label for="hidden">This event is currently hidden! Untick the box to make it visible to other users.</label>
+    </div>
+    {% else %}
+    <div>
+      <input type ="checkbox" id="hidden" name="hidden" value="True"> 
+      <label for="hidden">This event is currently visible on the index! Tick the box to hide it.</label>
+    </div>
+    {% endif%}
+    <div>
+      <label for="inviteuser">Do you want to invite other people to this event?</label>
+      <input name="inviteuser" id="inviteuser" minlength="3" maxlength="15">
+      <p>Invited users receive relevant information to access your event, when you choose to make it private or hide it.</p>
+    </div>
     <input type="submit" value="Save">
   </form>
   <hr>
