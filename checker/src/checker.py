@@ -20,7 +20,7 @@ from enochecker3 import (
     PutflagCheckerTaskMessage,
 )
 from enochecker3.utils import FlagSearcher, assert_equals, assert_in
-from httpx import AsyncClient
+from httpx import AsyncClient, Request
 
 """
 
@@ -85,15 +85,15 @@ class Totp_Client:
         return
 
 
-async def register_user(task, client, logger):
+async def register_user(task, client: AsyncClient, logger):
     username = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(10))
     password = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
     secret = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
 
     logger.debug(f"New user registration. Username: {username}, Password: {password}")
-    url = "http://" + task.address + ':' + str(SERVICE_PORT) + "/auth/register"
+    url = "http://"+ task.address + ':' + str(SERVICE_PORT) + "/auth/register"
     formdata = {"username": username, "password": password, "rpassword": password, "secret phrase": secret}
-    r = await client.post(url, json=formdata)
+    r = await client.post("/auth/register", data=formdata)
     assert_equals(r.status_code, 302, "Registration error in register user function.")
     return username, password, secret
 
