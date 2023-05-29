@@ -99,9 +99,8 @@ async def register_user(task, client: AsyncClient, logger):
 
 async def login_user(task, client, logger, username, password):
     logger.debug(f"Logging in user: {username}, with password: {password}")
-    url =  "http://" + task.address + ':' + str(SERVICE_PORT) + "/auth/login"
     formdata = {"username": username, "password": password}
-    r = await client.post(url, json=formdata)
+    r = await client.post("auth/login", data=formdata)
     assert_equals(r.status_code, 302, "Login Error in login_user function.")
     return r.cookies
 
@@ -114,8 +113,7 @@ async def create_blogpost(cookie, flag, is_private):
     else:
         formdata = {"title": title, "body": body}
 
-    url =  "http://" + task.address + ':' + str(SERVICE_PORT) + "/create"
-    r = await client.post(url, json=formdata, cookies=cookie)
+    r = await client.post("/create", data=formdata, cookies=cookie)
 
     html = BeautifulSoup(r.text, "html.parser")
     article = html.find('article', attrs={"class":"post"})
@@ -166,7 +164,7 @@ async def getflag_zero(
         #is mumble here correct or will lead to deduction in points?
         raise MumbleException("Missing database entry from putflag operation.")
     cookie = await login_user(task, client, userdata['username'], userdata['password'])
-    url = "http://" + task.address + str(SERVICE_PORT) + "/auth/accessblogpost/" + userdata['postid']
+    url ="/auth/accessblogpost/" + userdata['postid']
     r = await client.get(url, cookies=cookie)
     #assert_equals()
     assert_in(task.flag, r.text, "The flag could not be retrieved in the getflag method.")

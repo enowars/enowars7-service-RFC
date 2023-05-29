@@ -14,7 +14,7 @@ jobs:
     runs-on: self-hosted
     env:
       ENOCHECKER_TEST_CHECKER_ADDRESS: localhost
-      ENOCHECKER_TEST_CHECKER_PORT: 5008
+      ENOCHECKER_TEST_CHECKER_PORT: 7999
 
     steps:
     - uses: actions/checkout@v2
