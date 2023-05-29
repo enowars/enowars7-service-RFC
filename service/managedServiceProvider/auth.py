@@ -184,9 +184,16 @@ def accessblogpost(id):
             ' WHERE p.id = ?', (id,)
         ).fetchone()
 
+        query2 = db.execute(
+            'SELECT id FROM invitation WHERE user_id = ? AND post_id = ?',
+            (g.user['id'], id,)
+        ).fetchone()
+
         if g.user['id'] == query['author_id']:
             return render_template('blog/blogpost.html', post=query)
         elif query['is_hidden'] == "FALSE" and query['is_private'] == "FALSE":
+            return render_template('blog/blogpost.html', post=query)
+        elif query2 is not None:
             return render_template('blog/blogpost.html', post=query)
         else:
             return render_template('auth/test_totp_login.html')

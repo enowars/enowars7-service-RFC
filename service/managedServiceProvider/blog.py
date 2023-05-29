@@ -20,12 +20,40 @@ def index():
     ).fetchall()
     return render_template('blog/index.html', posts=posts)
 
-def check_event_params(title, body):
+def check_event_params(title, body, invited):
     error = None
+    inv_bool = True
+    if not invited:
+        inv_bool = False
     if not title or len(title) > 50:
         error = "The title must neither be empty, nor exceed 50 characters."
     elif not body or len(body) > 500:
         error = "The events needs a concise description."
+    elif inv_bool and (len(invited) < 3 or len(invited) > 15):
+        error = "The invited username is invalid."
+    elif invited == g.user['username']:
+        error = "You cannot invite yourself to an event."
+    return error
+
+
+def handle_invite(invited, title, ferror):
+    error = ferror
+    database = get_db()
+    try:
+        postquery = database.execute('SELECT id FROM post WHERE title = ?',
+                                     (title,)
+                                     ).fetchone()
+        userquery = database.execute('SELECT id FROM user WHERE username = ?',
+                                (invited,)
+                                ).fetchone()
+        query3 = database.execute('INSERT INTO invitation (user_id, post_id)'
+                            ' VALUES (?, ?)',
+                            (userquery['id'], postquery['id'])
+                            )
+        database.commit()
+    except:
+        error = "Oops! Seems like the user you wanted to invite does not exist."
+
     return error
 
 @bp.route('/create', methods=('GET', 'POST'))
@@ -34,7 +62,8 @@ def create():
     if request.method == 'POST':
         title = request.form['title']
         body = request.form['body']
-        error = check_event_params(title, body)
+        invited = request.form['inviteuser']
+        error = check_event_params(title, body, invited)
         is_private = None
         is_hidden = None
 
@@ -62,6 +91,7 @@ def create():
             key = request.form['title'] + g.user['username']
             print("created the following key: ", key)
             db = get_db()
+
             try:
                 db.execute(
                     'INSERT INTO post (title, body, author_id, key, is_private, is_hidden)'
@@ -71,12 +101,22 @@ def create():
                 db.commit()
             except:
                 error = "The given title already exists. Try again!"
+                #flash(error)
+                #return render_template('blog/create.html')
+
+
+            if len(invited) != 0:
+                error = handle_invite(invited, title, error)
+            if error is not None:
                 flash(error)
                 return render_template('blog/create.html')
+            else:
+                postquery = db.execute('SELECT id, body FROM post WHERE title = ? AND author_id = ?',
+                                       (title, g.user['id'])
+                                        ).fetchone()
+                return redirect(url_for('auth.accessblogpost', id=postquery['id']))
 
-            query = db.execute('SELECT id, body FROM post WHERE title = ? AND author_id = ?', (title, g.user['id'])).fetchone()
 
-            return redirect(url_for('auth.accessblogpost', id=query['id']))
 
     return render_template('blog/create.html')
 
@@ -103,7 +143,8 @@ def update(id):
     if request.method == 'POST':
         title = request.form['title']
         body = request.form['body']
-        error = check_event_params(title, body)
+        invited = request.form['inviteuser']
+        error = check_event_params(title, body, invited)
         is_private = None
         is_hidden = None
 
@@ -135,7 +176,16 @@ def update(id):
                 (title, body, is_private, is_hidden, id)
             )
             db.commit()
-            return redirect(url_for('blog.index'))
+
+            if len(invited) != 0:
+                error = handle_invite(invited, title, error)
+            if error is not None:
+                flash(error)
+                return redirect(url_for('blog.update', id=id))
+            else:
+                return redirect(url_for('auth.accessblogpost', id=id))
+
+        return redirect(url_for('blog.index'))
 
     return render_template('blog/update.html', post=post)
 
