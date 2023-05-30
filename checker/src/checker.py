@@ -91,7 +91,6 @@ async def register_user(task, client: AsyncClient, logger):
     secret = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
 
     logger.debug(f"New user registration. Username: {username}, Password: {password}")
-    url = "http://"+ task.address + ':' + str(SERVICE_PORT) + "/auth/register"
     formdata = {"username": username, "password": password, "rpassword": password, "secret phrase": secret}
     r = await client.post("/auth/register", data=formdata)
     assert_equals(r.status_code, 302, "Registration error in register user function.")
@@ -107,6 +106,7 @@ async def login_user(task, client, logger, username, password):
 async def create_blogpost(cookie, flag, is_private):
     title = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
     body = flag
+    formdata = None
     if is_private:
         private = "True"
         formdata = {"title": title, "body": body, "private": private}
@@ -193,7 +193,7 @@ def convert_str_to_unixtimestamp(timestr: str):
     timec = timec.split('.', 1)[0]
     timecomp=timec.split(':')
     #create new aware datetime object from date and time components
-    dto = datetime.datetime(int(datecomp[0]), int(datecomp[1]), int(datecomp[2]), int(timecomp[0]), int(timecomp[1]), int(timecomp[2]), tzinfo=timezone.utc)
+    dto = datetime.datetime(int(datecomp[0]), int(datecomp[1]), int(datecomp[2]), int(timecomp[0]), int(timecomp[1]), tzinfo=timezone.utc)
     print("returning")
     return dto.timestamp()
 
@@ -225,6 +225,7 @@ async def exploit_zero(task: ExploitCheckerTaskMessage,
 
     time = find_params(r, username, postid)
     timestamp = convert_str_to_unixtimestamp(time)
+    timestamp_plus = int(timestamp) + 30
     postkey = title + username
     totp_device = Totp_Client(init_time=timestamp)
     totp_device.generate_shared_secret(postkey)
