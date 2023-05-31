@@ -103,24 +103,26 @@ async def login_user(task, client, logger, username, password):
     assert_equals(r.status_code, 302, "Login Error in login_user function.")
     return r.cookies
 
-async def create_blogpost(cookie, flag, is_private):
+async def create_blogpost(client, cookie, flag, is_private):
     title = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
     body = flag
     formdata = None
+    inviteduser = ""
     if is_private:
         private = "True"
-        formdata = {"title": title, "body": body, "private": private}
+        formdata = {"title": title, "body": body, "private": private, "inviteuser": inviteduser}
     else:
-        formdata = {"title": title, "body": body}
+        formdata = {"title": title, "body": body, "inviteuser": inviteduser}
 
     r = await client.post("/create", data=formdata, cookies=cookie)
-
-    html = BeautifulSoup(r.text, "html.parser")
+    #follow redirect
+    f = await client.get(r.headers['Location'], cookies=cookie)
+    assert_equals(r.status_code, 302, "Blogpost creation error in create_blogpost function.")
+    html = BeautifulSoup(f.text, "html.parser")
     article = html.find('article', attrs={"class":"post"})
     el_a = article.find('a', attrs={"class":"action"})
     postid = el_a['href'].split('/')[1]
 
-    assert_equals(r.status_code, 302, "Blogpost creation error in create_blogpost function.")
     return title, postid
 
 @checker.putflag(0)
@@ -140,7 +142,7 @@ async def putflag_zero(
     flag = task.flag
     username, password, secret = await register_user(task, client, logger)
     cookie = await login_user(task, client, logger, username, password)
-    title, postid = await create_blogpost(cookie, flag, True) #True makes blogpost private
+    title, postid = await create_blogpost(client,  cookie, flag, True) #True makes blogpost private
 
     await db.set("nec_info", (username, password, secret, title, postid))
     attackinfo = {"title": title, "postid": postid}
@@ -149,6 +151,7 @@ async def putflag_zero(
 @checker.getflag(0)
 async def getflag_zero(
     task: GetflagCheckerTaskMessage,
+    logger: LoggerAdapter,
     client: AsyncClient,
     db: ChainDB
 ) -> None:
@@ -163,10 +166,10 @@ async def getflag_zero(
     except KeyError:
         #is mumble here correct or will lead to deduction in points?
         raise MumbleException("Missing database entry from putflag operation.")
-    cookie = await login_user(task, client, userdata['username'], userdata['password'])
-    url ="/auth/accessblogpost/" + userdata['postid']
+    cookie = await login_user(task, client, logger, userdata[0], userdata[1])
+    url ="/auth/accessblogpost/" + userdata[4]
     r = await client.get(url, cookies=cookie)
-    #assert_equals()
+    assert_equals(r.status_code, 200, "error when getting blogpost")
     assert_in(task.flag, r.text, "The flag could not be retrieved in the getflag method.")
     return
 
