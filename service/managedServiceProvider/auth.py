@@ -240,6 +240,19 @@ def account_info():
         ' ORDER BY created DESC'
     ).fetchall()
 
+    invitations = db.execute(
+        'SELECT post_id FROM invitation WHERE user_id = ?',
+        (g.user['id'],)
+    ).fetchall()
+
+    #relevant_posts = {}
+    #for post in posts:
+     #   if(posts['author_id'] == g.user['id']):
+     #       relevant_posts[posts['p.id'] = post
+      #  elif
+
+
+
     if request.method == 'POST':
         if g.user == None:
             abort(404, "You have to be logged in to view this page")
