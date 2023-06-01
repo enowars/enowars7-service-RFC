@@ -60,6 +60,7 @@ def handle_invite(invited, title, ferror):
 @login_required
 def create():
     if request.method == 'POST':
+        #TODO remove trailing white spaces
         title = request.form['title']
         body = request.form['body']
         invited = request.form['inviteuser']

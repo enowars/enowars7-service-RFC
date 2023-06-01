@@ -178,16 +178,20 @@ def accessblogpost(id):
         db = get_db()
 
         #change query to make username displayable in html
-        query = db.execute(
+        try:
+            query = db.execute(
             'SELECT title, body, created, author_id, is_private, is_hidden, p.id, username'
             ' FROM post p JOIN user u ON p.author_id = u.id'
             ' WHERE p.id = ?', (id,)
-        ).fetchone()
+            ).fetchone()
 
-        query2 = db.execute(
-            'SELECT id FROM invitation WHERE user_id = ? AND post_id = ?',
-            (g.user['id'], id,)
-        ).fetchone()
+            query2 = db.execute(
+                'SELECT id FROM invitation WHERE user_id = ? AND post_id = ?',
+                (g.user['id'], id,)
+            ).fetchone()
+        except:
+            flash("a db error occured")
+            return render_template('auth/test_totp_login.html')
 
         if g.user['id'] == query['author_id']:
             return render_template('blog/blogpost.html', post=query)
