@@ -1,5 +1,8 @@
 FROM python:3.8.16-buster
 
+RUN apt update && apt install -y nginx
+COPY ./nginx.conf /etc/ngnix/nginx.conf
+
 WORKDIR /tmp 
 COPY ./requirements.txt .
 RUN python3 -m pip install -r requirements.txt

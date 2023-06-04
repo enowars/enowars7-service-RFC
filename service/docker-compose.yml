@@ -1,7 +1,11 @@
 services:
   totp:
-    build: ./
+    build:
+      context: .
+      dockerfile: ./Dockerfile
     ports:
       - 5000:5000
+    hostname: onlyblogs
+    container_name: onlyblogs_service
     
 
