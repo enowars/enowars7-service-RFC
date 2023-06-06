@@ -129,6 +129,11 @@ async def create_blogpost(client, cookie, flag, is_private, is_hidden, invitedus
 
     return title, postid
 
+def logout_user(client, logger, username):
+    r = await client.get('auth/logout')
+    logger.debug(f"logged out: {username}")
+    assert_equals(r.status_code, 302, "Logout did not redirect to index")
+    return
 # Deposit a flag in a private user post.
 @checker.putflag(0)
 async def putflag_zero(
@@ -148,6 +153,7 @@ async def putflag_zero(
     username, password, secret = await register_user(task, client, logger)
     cookie = await login_user(task, client, logger, username, password)
     title, postid = await create_blogpost(client, cookie, flag, is_private=True, is_hidden=False, inviteduser="")
+    await logout_user(client, logger, username)
 
     await db.set("nec_info", (username, password, secret, title, postid))
     # TODO: only providing the title should suffice
@@ -178,6 +184,8 @@ async def getflag_zero(
     r = await client.get(url, cookies=cookie)
     assert_equals(r.status_code, 200, "error when getting blogpost")
     assert_in(task.flag, r.text, "The flag could not be retrieved in the getflag method.")
+
+    await logout_user(client, logger, username)
     return
 
 #find timestamp and postid for post given by title
@@ -195,7 +203,7 @@ def find_params(r, username, postid, title):
                 el_a = article.find('a', attrs={"class":"action"})
                 post_id = el_a['href'].split('/')[-1]
                 return time, post_id, name
-    except: 
+    except:
         msg = f"post with id {postid} could not be found"
         raise MumbleException(msg)
 
@@ -255,7 +263,10 @@ async def exploit_zero(task: ExploitCheckerTaskMessage,
         if body is not None:
             logger.debug(f"paragraph: {body.string}")
             if flag := searcher.search_flag(r.text):
+                await logout_user(client, logger, username)
                 return flag
+    await logout_user(client, logger, username)
     raise MumbleException("Flag not found in exploit")
+
     #assert_equals(r.status_code, 200, "Wrong status code in exploit function, @totp")
     #assert_in(task.flag, r.text, "flag was not found in blogpost")
