@@ -4,7 +4,8 @@ services:
       context: .
       dockerfile: ./Dockerfile
     ports:
-      - 5000:80
+      - 5000:5000
+      #- 5000:80
         #    hostname: onlyblogs
         # container_name: onlyblogs_service
     
