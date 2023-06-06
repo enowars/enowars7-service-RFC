@@ -185,7 +185,7 @@ async def getflag_zero(
     assert_equals(r.status_code, 200, "error when getting blogpost")
     assert_in(task.flag, r.text, "The flag could not be retrieved in the getflag method.")
 
-    await logout_user(client, logger, username)
+    await logout_user(client, logger, userdata[0])
     return
 
 #find timestamp and postid for post given by title
