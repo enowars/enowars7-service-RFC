@@ -129,7 +129,7 @@ async def create_blogpost(client, cookie, flag, is_private, is_hidden, invitedus
 
     return title, postid
 
-def logout_user(client, logger, username):
+async def logout_user(client, logger, username):
     r = await client.get('auth/logout')
     logger.debug(f"logged out: {username}")
     assert_equals(r.status_code, 302, "Logout did not redirect to index")
