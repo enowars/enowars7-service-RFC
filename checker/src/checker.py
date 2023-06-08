@@ -41,7 +41,8 @@ class Totp_Client:
 
         self.secret_key = ""
         self.init_time = init_time
-        self.timestep = 30
+        #ADJUST TIMESTEP
+        self.timestep = 15
         self.timestep_counter = 0
         if num_digits > 10 or num_digits < 6:
             raise ValueError("The number of digits for the OTP must be between 6 and 10")
@@ -253,7 +254,9 @@ async def exploit_zero(task: ExploitCheckerTaskMessage,
     totp_device = Totp_Client(init_time=timestamp)
     totp_device.generate_shared_secret(postkey)
     totp_device.calculate_current_timestep_count()
-    for i in range(2):
+
+    #60 divided by range -> length of validity period
+    for i in range(4):
         usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter+i)
         logger.debug(f"round: {i}, user: {username}, accessing post: {title}, timestamp: {timestamp}, usercode: {usercode}")
         r = await client.post("auth/accessblogpost/"+ str(post_id), data={"code":usercode}, cookies=cookie)
