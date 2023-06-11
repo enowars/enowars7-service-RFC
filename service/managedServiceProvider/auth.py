@@ -50,10 +50,12 @@ def register():
 
         db = get_db()
         if error is None:
+            dt = datetime.datetime.now(timezone.utc)
+            init_time = int(dt.timestamp())
             try:
                 db.execute(
                     "INSERT INTO user (username, password, init_time) VALUES (?, ?, ?)",
-                    (username, generate_password_hash(password), time.time()),
+                    (username, generate_password_hash(password), init_time),
                 )
                 db.commit()
             except db.IntegrityError:
@@ -163,7 +165,7 @@ def accessblogpost(id):
 
         usercode = request.form['code']
         print("usercode: ", usercode)
-        blogpost_creation_time = convert_str_to_unixtimestamp(str(query['created']))
+        blogpost_creation_time = int(convert_str_to_unixtimestamp(str(query['created'])))
         print("this is: ", blogpost_creation_time)
         totp = totp_server.Totp(init_time=blogpost_creation_time)
         result = totp.validate_otp(int(usercode), totp.generate_shared_secret(query['key']))

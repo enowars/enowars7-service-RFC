@@ -17,16 +17,13 @@ class Totp:
             raise ValueError("The number of digits for the OTP must be between 6 and 10")
         self.num_digits = num_digits
         self.timestep_counter = timestep_counter
-        self.timestep = 15
+        self.timestep = 30
         self.init_time = init_time #unix time in UTC
 
         self.digest = hashlib.sha1
         self.throttle = 42 #refuse connections after this many failed auth attempts
         self.lookahead = 2
         return
-
-#RFC4226 statest that the shaed secret must be of at least 128 bits, preferably 160 bits
-#IDEA: user can provide their own key, and iof they do not, then a shared secret key is generated
 
     def generate_shared_secret(self, user_phrase: str=""):
         secret = user_phrase
@@ -38,7 +35,6 @@ class Totp:
     def generate_otp(self, shared_secret: str, timestep_counter: int):
         # for HOTP: HOTP(K,C) = Truncate(HMAC-SHA-1(K,C))
         #returns 20 byte string
-        #using timestep could be a vuln because then the output is always identical hmac_result = hmac.new(self.generate_shared_secret(), bytes(timestep), self.digest)
         hmac_result = hmac.new(shared_secret, bytes(self.timestep_counter), self.digest)
         bin_code = self.truncate(bytearray(hmac_result.digest()))
         return int(bin_code) % 10**self.num_digits

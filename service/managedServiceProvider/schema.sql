@@ -16,16 +16,14 @@ CREATE TABLE IF NOT EXISTS post (
   is_private INTEGER NOT NULL DEFAULT FALSE,
   is_hidden INTEGER NOT NULL DEFAULT FALSE,
   key TEXT NOT NULL,
-  FOREIGN KEY (author_id) REFERENCES user (id)
-    ON DELETE CASCADE
+  FOREIGN KEY (author_id) REFERENCES user (id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS invitation (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
   post_id INTEGER NOT NULL,
-  FOREIGN KEY (user_id) REFERENCES user (id)
-    ON DELETE CASCADE
+  FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE
 );
 
 
@@ -43,6 +41,5 @@ CREATE TABLE IF NOT EXISTS event (
   event_photo BLOB,
   init_time INTEGER,
   event_key TEXT NOT NULL DEFAULT "one secret to rule them all",
-  FOREIGN KEY (host_id) REFERENCES user (id)
-    ON DELETE CASCADE
+  FOREIGN KEY (host_id) REFERENCES user (id) ON DELETE CASCADE
 );
