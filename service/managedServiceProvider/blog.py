@@ -13,6 +13,8 @@ bp = Blueprint('blog', __name__)
 @bp.route('/')
 def index():
     db = get_db()
+    # TODO limit the number of displayed events, reduce strain  on db.
+    # TODO then introduce a button that loads more posts on demand on the bottom of the page
     posts = db.execute(
         'SELECT p.id, title, body, created, author_id, is_hidden, username'
         ' FROM post p JOIN user u ON p.author_id = u.id'
@@ -60,51 +62,56 @@ def handle_invite(invited, title, ferror):
 @login_required
 def create():
     if request.method == 'POST':
-        #TODO remove trailing white spaces
         title = request.form['title']
+        title = title.strip()
         body = request.form['body']
         invited = request.form['inviteuser']
         error = check_event_params(title, body, invited)
-        is_private = None
-        is_hidden = None
 
-        try:
-            checkbox = request.form['private']
-            if checkbox == "True":
+        is_private = "FALSE"
+        if 'private' in request.form:
+            if request.form['private'] == "True":
                 is_private = "TRUE"
-            else:
-                is_private = "FALSE"
-        except:
-            is_private = "FALSE"
 
-        try:
-            checkbox = request.form['hidden']
-            if checkbox == "True":
+        is_hidden = "FALSE"
+        if 'hidden' in request.form:
+            if request.form['hidden'] == "True":
                 is_hidden = "TRUE"
-            else:
-                is_hidden = "FALSE"
-        except:
-            is_hidden = "FALSE"
+#        try:
+#            checkbox = request.form['private']
+#            if checkbox == "True":
+#                is_private = "TRUE"
+#            else:
+#                is_private = "FALSE"
+#        except:
+#            is_private = "FALSE"
+#
+#        try:
+#            checkbox = request.form['hidden']
+#            if checkbox == "True":
+#                is_hidden = "TRUE"
+#            else:
+#                is_hidden = "FALSE"
+#        except:
+#            is_hidden = "FALSE"
 
         if error is not None:
             flash(error)
         else:
-            key = request.form['title'] + g.user['username']
-            print("created the following key: ", key)
+            postkey = request.form['title'] + g.user['username']
             db = get_db()
-
             try:
                 db.execute(
                     'INSERT INTO post (title, body, author_id, key, is_private, is_hidden)'
                     ' VALUES (?, ?, ?, ?, ?, ?)',
-                    (title, body, g.user['id'], key, is_private, is_hidden)
+                    (title, body, g.user['id'], postkey, is_private, is_hidden)
                 )
                 db.commit()
             except:
                 error = "The given title already exists. Try again!"
                 #flash(error)
+                #fixes vulnerability
                 #return render_template('blog/create.html')
-
 
             if len(invited) != 0:
                 error = handle_invite(invited, title, error)
@@ -116,8 +123,6 @@ def create():
                                        (title, g.user['id'])
                                         ).fetchone()
                 return redirect(url_for('auth.accessblogpost', id=postquery['id']))
-
-
 
     return render_template('blog/create.html')
 
@@ -146,26 +151,37 @@ def update(id):
         body = request.form['body']
         invited = request.form['inviteuser']
         error = check_event_params(title, body, invited)
-        is_private = None
-        is_hidden = None
 
-        try:
-            checkbox = request.form['private']
-            if checkbox == "True":
+        is_private = "FALSE"
+        if 'private' in request.form:
+            if request.form['private'] == "True":
                 is_private = "TRUE"
-            else:
-                is_private = "FALSE"
-        except:
-            is_private = "FALSE"
 
-        try:
-            checkbox = request.form['hidden']
-            if checkbox == "True":
+        is_hidden = "FALSE"
+        if 'hidden' in request.form:
+            if request.form['hidden'] == "True":
                 is_hidden = "TRUE"
-            else:
-                is_hidden = "FALSE"
-        except:
-            is_hidden = "FALSE"
+
+#        is_hidden = None
+#        is_private = "FALSE"
+#
+#        try:
+#            checkbox = request.form['private']
+#            if checkbox == "True":
+#                is_private = "TRUE"
+#            else:
+#                is_private = "FALSE"
+#        except:
+#            is_private = "FALSE"
+#
+#        try:
+#            checkbox = request.form['hidden']
+#            if checkbox == "True":
+#                is_hidden = "TRUE"
+#            else:
+#                is_hidden = "FALSE"
+#        except:
+#            is_hidden = "FALSE"
 
         if error is not None:
             flash(error)

@@ -10,7 +10,7 @@ def create_app(test_config=None):
         DATABASE=os.path.join(app.instance_path, 'msp.sqlite'),
     )
 
-
+    # TODO; use for deployment behind nginx as proxy
     #app.wsgi_app = ProxyFix(
      #   app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
     #)
@@ -27,12 +27,6 @@ def create_app(test_config=None):
         os.makedirs(app.instance_path)
     except OSError:
         pass
-
-
-# a simple page that says hello
-#   @app.route('/hello')
-#   def hello():
-#       return 'Hello, World!'
 
     #intialize the database
     from . import db

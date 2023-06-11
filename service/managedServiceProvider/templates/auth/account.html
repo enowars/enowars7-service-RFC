@@ -9,26 +9,42 @@
     <input type="submit" value="Update">
   </form>
 
-  <h3>My Events</h3>
+  <h3>Your Events</h3>
     <form action="{{ url_for('blog.create') }}">
       <input type="submit" value="Create new Event">
     </form>
- {% for post in posts %}
+  
+  {% for post in posts %}
     {% if g.user['id'] == post['author_id'] %}
-      <article class="post">
-        <header>
-          <div>
-            <h1>{{ post['title'] }}</h1>
-            <div class="about">by {{ post['username'] }} on {{ post['created'].strftime('%Y-%m-%d %H:%M:%S') }}</div>
-          </div>
-          <a class="action" href="{{ url_for('blog.update', id=post['id']) }}">Edit</a>
-        </header>
-        <a class="action" href="{{ url_for('auth.accessblogpost', id=post['id']) }}">View this Event</a>
-      </article>
-      {% if not loop.last %}
+        <article class="post">
+          <header>
+            <div>
+              <h4>You are hosting: {{ post['title'] }}</h1>
+              <div class="about">by {{ post['username'] }} on {{ post['created'].strftime('%Y-%m-%d %H:%M:%S') }}</div>
+            </div>
+            <a class="action" href="{{ url_for('blog.update', id=post['id']) }}">Edit</a>
+          </header>
+          <a class="action" href="{{ url_for('auth.accessblogpost', id=post['id']) }}">View this Event</a>
+        </article>
         <hr>
       {% endif %}
-    {% endif %}
+    {% endfor %}
 
+    {% for invite in invitations %}
+      {% if invite['user_id'] == g.user['id'] %}
+          <article class="post">
+             <header>
+               <div>
+                  <h4>You are invited to: {{ invite['title'] }}</h1>
+                  <div class="about">Date: {{ invite['created'].strftime('%Y-%m-%d %H:%M:%S') }}</div>
+                  <div class="totp-info">The secret event key is: {{ invite['key'] }}</div>
+               </div>
+
+             </header>
+             <a class="action" href="{{ url_for('auth.accessblogpost', id=invite['post_id']) }}">View this Event</a>
+          </article>
+      <hr>
+    {% endif %}
   {% endfor %}
+
 {% endblock %}

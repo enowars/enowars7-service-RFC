@@ -61,6 +61,7 @@ def register():
             except db.IntegrityError:
                 error = f"User {username} is already registered."
             else:
+                #OLD - used for redirect to totp login
                 #rand = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
                 #dyn_url = rand + "?" + str(username)
                 #return redirect(url_for("auth.totp_registration", dyn_url=dyn_url))
@@ -69,7 +70,7 @@ def register():
 
     return render_template('auth/register.html')
 
-
+# CURRENTLY NOT IN USE
 @bp.route('/completeRegistration/<dyn_url>', methods=('GET', 'POST'))
 def totp_registration(dyn_url):
     #assume the dyn url contains username and init_time
@@ -105,16 +106,17 @@ def login():
         if error is None:
             session.clear()
             session['user_id'] = user['id']
-            rand = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
-            dyn_url = rand + "?" + str(username)
             return redirect(url_for("blog.index"))
+
+            #rand = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
+            #dyn_url = rand + "?" + str(username)
             #return redirect(url_for("auth.totp_login", dyn_url=dyn_url))
 
         flash(error)
 
     return render_template('auth/login.html')
 
-
+# CURRENTLY NOT IN USE
 @bp.route('/login/<dyn_url>', methods=('GET', 'POST'))
 def totp_login(dyn_url):
     if request.method == 'POST':
@@ -135,8 +137,6 @@ def totp_login(dyn_url):
 
         flash(error)
     return render_template('auth/test_totp_login.html')
-    #on successful totp, redirect as shown below
-    #return redirect(url_for('index'))
 
 def convert_str_to_unixtimestamp(timestr: str):
     date, timec = timestr.split(' ', 1)
@@ -150,25 +150,24 @@ def convert_str_to_unixtimestamp(timestr: str):
 @bp.route('/accessblogpost/<int:id>', methods=('GET', 'POST'))
 @login_required
 def accessblogpost(id):
-    #What information must be included in eventinfo? And what user info do we need?
-    # 1. we do not need any user info. whoever has the correct totp can access
-    # 2. we need to check whether the event is private. If it is notm forward right away
-    #check totp
 
-    #TODO when post, we should ONLY attempt to validate TOTP
     if request.method == 'POST':
         print("processing post...")
         db = get_db()
-        query = db.execute(
-            'SELECT title, body, created, author_id, key, is_private, is_hidden, id FROM post WHERE id = ?', (id,)
-        ).fetchone()
+        try:
+            query = db.execute(
+                'SELECT title, body, created, author_id, key, is_private, is_hidden, id FROM post WHERE id = ?', (id,)
+            ).fetchone()
+        except:
+            abort(403, 'Forbidden')
 
         usercode = request.form['code']
         print("usercode: ", usercode)
         blogpost_creation_time = int(convert_str_to_unixtimestamp(str(query['created'])))
-        print("this is: ", blogpost_creation_time)
+        print("blogpost creation time: ", blogpost_creation_time)
         totp = totp_server.Totp(init_time=blogpost_creation_time)
         result = totp.validate_otp(int(usercode), totp.generate_shared_secret(query['key']))
+
         error = None
         if not result:
             error = "Wrong passcode. Try again!"
@@ -178,8 +177,7 @@ def accessblogpost(id):
 
     elif request.method == 'GET':
         db = get_db()
-
-        #change query to make username displayable in html
+        #TODO fix error. When accessing blogpost via url with non-existent id --> internal server error
         try:
             query = db.execute(
             'SELECT title, body, created, author_id, is_private, is_hidden, p.id, username'
@@ -195,14 +193,19 @@ def accessblogpost(id):
             flash("a db error occured")
             return render_template('auth/test_totp_login.html')
 
+        if query is None:
+            return redirect(url_for('index'))
+
+        # Check if the current user may access the given blogpost
         if g.user['id'] == query['author_id']:
             return render_template('blog/blogpost.html', post=query)
         elif query['is_hidden'] == "FALSE" and query['is_private'] == "FALSE":
             return render_template('blog/blogpost.html', post=query)
+        #TODO invitations should be irrelevant here, since they require totp
         elif query2 is not None:
             return render_template('blog/blogpost.html', post=query)
         else:
-            return render_template('auth/test_totp_login.html')
+            return render_template('auth/test_totp_login.html', title=query['title'])
 
     return render_template('auth/test_totp_login.html')
 
@@ -239,26 +242,28 @@ def access_event(eventinfo):
 @login_required
 def account_info():
     db = get_db()
+    error = None
     #TODO currently query returns all blogposts
-    posts = db.execute(
-        'SELECT p.id, title, body, created, author_id, is_hidden, username'
-        ' FROM post p JOIN user u ON p.author_id = u.id'
-        ' ORDER BY created DESC'
-    ).fetchall()
+    try:
+        posts = db.execute(
+            'SELECT p.id, title, created, author_id, is_hidden, key, username'
+            ' FROM post p JOIN user u ON p.author_id = u.id'
+            ' ORDER BY created DESC'
+        ).fetchall()
 
-    invitations = db.execute(
-        'SELECT post_id FROM invitation WHERE user_id = ?',
-        (g.user['id'],)
-    ).fetchall()
+        invitations = db.execute(
+            'SELECT i.post_id, i.user_id, p.id, title, key, created'
+            ' FROM post p JOIN invitation i ON p.id = i.post_id',
+        ).fetchall()
+    except:
+        error = "An error occured when fetching post information."
+        flash(error)
 
-    #relevant_posts = {}
-    #for post in posts:
-     #   if(posts['author_id'] == g.user['id']):
-     #       relevant_posts[posts['p.id'] = post
-      #  elif
+    if error is not None:
+        render_template('auth/account.html', posts=None, invitations=None)
 
 
-
+    # Update usert accout information
     if request.method == 'POST':
         if g.user == None:
             abort(404, "You have to be logged in to view this page")
@@ -276,7 +281,7 @@ def account_info():
                 error = "Failed to update the username..."
 
             flash(error)
-    return render_template('auth/account.html', posts=posts)
+    return render_template('auth/account.html', posts=posts, invitations=invitations)
 
 
 @bp.before_app_request
