@@ -209,35 +209,6 @@ def accessblogpost(id):
 
     return render_template('auth/test_totp_login.html')
 
-@bp.route('/accessEvent')
-def access_event(eventinfo):
-    #What information must be included in eventinfo? And what user info do we need?
-    # 1. we do not need any user info. whoever has the correct totp can access
-    # 2. we need to check whether the event is private. If it is notm forward right away
-    #check totp
-    if request.method == 'POST':
-        db = get_db()
-        query = db.execute(
-            'SELECT created, is_private, init_time, event_key FROM event WHERE id = ?', (eventinfo['id'],)
-        ).fetchone()
-
-        if not is_private:
-            #forward to event page immediately
-            return redirect(url_for("index"))
-        else:
-            usercode = request.method['usercode']
-            totp = totp_server.Totp(init_time=query['init_time'])
-            result = totp.validate_otp(int(usercode), totp.generate_shared_secret(str(query['event_key'])))
-            error = None
-            if not result:
-                error = "failed to validate OTP. Try Again"
-            else:
-                return redirect(url_for("index"))
-            flash(error)
-
-    #need a similar template to the totp login
-    return render_template('auth/test_totp_login.html')
-
 @bp.route('/accountInfo', methods=('GET', 'POST'))
 @login_required
 def account_info():

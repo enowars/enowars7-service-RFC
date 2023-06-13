@@ -28,20 +28,6 @@ def index():
 def pages(limit=200):
     offset=0
     db = get_db()
-    #if request.method=='POST':
-    #    try:
-    #        posts = db.execute(
-    #            'SELECT p.id, title, body, created, author_id, is_hidden, username'
-    #            ' FROM post p JOIN user u ON p.author_id = u.id'
-    #            ' ORDER BY created DESC'
-    #            ' LIMIT ? OFFSET ?',
-    #            (limit, offset,)
-    #        ).fetchall()
-
-    #        return render_template('blog/index.html', posts=posts, limit=limit, offset=offset)
-    #    except:
-    #        flash("Oops, something went wrong!")
-    #else:
     posts = db.execute(
             'SELECT p.id, title, body, created, author_id, is_hidden, username'
             ' FROM post p JOIN user u ON p.author_id = u.id'
@@ -90,6 +76,22 @@ def handle_invite(invited, title, ferror):
 @bp.route('/create', methods=('GET', 'POST'))
 @login_required
 def create():
+    query=None
+    try:
+        db = get_db()
+        query = db.execute(
+            'SELECT num_posts FROM user WHERE id = ?',
+            (g.user['id'],)
+        ).fetchone()
+    except:
+        flash("Ooops, somewthing went wrong!")
+
+    if query is None:
+        flash("hmpf")
+    elif query['num_posts'] >= 5:
+        flash("You have created the maximum of five events. Consider upgrading to premium for unlimited posts")
+        return render_template('blog/create.html')
+
     if request.method == 'POST':
         title = request.form['title']
         title = title.strip()
@@ -106,23 +108,6 @@ def create():
         if 'hidden' in request.form:
             if request.form['hidden'] == "True":
                 is_hidden = "TRUE"
-#        try:
-#            checkbox = request.form['private']
-#            if checkbox == "True":
-#                is_private = "TRUE"
-#            else:
-#                is_private = "FALSE"
-#        except:
-#            is_private = "FALSE"
-#
-#        try:
-#            checkbox = request.form['hidden']
-#            if checkbox == "True":
-#                is_hidden = "TRUE"
-#            else:
-#                is_hidden = "FALSE"
-#        except:
-#            is_hidden = "FALSE"
 
         if error is not None:
             flash(error)
@@ -141,6 +126,18 @@ def create():
                 #flash(error)
                 #fixes vulnerability
                 #return render_template('blog/create.html')
+
+            try:
+                db = get_db()
+                num_posts = query['num_posts'] + 1
+                db.execute(
+                    'UPDATE user SET num_posts = ?'
+                    ' WHERE id = ?',
+                    (num_posts, g.user['id'])
+                )
+                db.commit()
+            except:
+                error = "Could not update number of posts for user"
 
             if len(invited) != 0:
                 error = handle_invite(invited, title, error)
@@ -190,27 +187,6 @@ def update(id):
         if 'hidden' in request.form:
             if request.form['hidden'] == "True":
                 is_hidden = "TRUE"
-
-#        is_hidden = None
-#        is_private = "FALSE"
-#
-#        try:
-#            checkbox = request.form['private']
-#            if checkbox == "True":
-#                is_private = "TRUE"
-#            else:
-#                is_private = "FALSE"
-#        except:
-#            is_private = "FALSE"
-#
-#        try:
-#            checkbox = request.form['hidden']
-#            if checkbox == "True":
-#                is_hidden = "TRUE"
-#            else:
-#                is_hidden = "FALSE"
-#        except:
-#            is_hidden = "FALSE"
 
         if error is not None:
             flash(error)
