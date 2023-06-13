@@ -10,17 +10,46 @@ from managedServiceProvider.db import get_db
 
 bp = Blueprint('blog', __name__)
 
-@bp.route('/')
+@bp.route('/', methods=('GET', 'POST'))
 def index():
+    limit=200
+    offset=0
     db = get_db()
-    # TODO limit the number of displayed events, reduce strain  on db.
-    # TODO then introduce a button that loads more posts on demand on the bottom of the page
     posts = db.execute(
-        'SELECT p.id, title, body, created, author_id, is_hidden, username'
-        ' FROM post p JOIN user u ON p.author_id = u.id'
-        ' ORDER BY created DESC'
-    ).fetchall()
-    return render_template('blog/index.html', posts=posts)
+            'SELECT p.id, title, body, created, author_id, is_hidden, username'
+            ' FROM post p JOIN user u ON p.author_id = u.id'
+            ' ORDER BY created DESC'
+            ' LIMIT ? OFFSET ?',
+            (limit, offset,)
+        ).fetchall()
+    return render_template('blog/index.html', posts=posts, limit=limit, offset=offset)
+
+@bp.route('/page/<int:limit>', methods=('GET', 'POST'))
+def pages(limit=200):
+    offset=0
+    db = get_db()
+    #if request.method=='POST':
+    #    try:
+    #        posts = db.execute(
+    #            'SELECT p.id, title, body, created, author_id, is_hidden, username'
+    #            ' FROM post p JOIN user u ON p.author_id = u.id'
+    #            ' ORDER BY created DESC'
+    #            ' LIMIT ? OFFSET ?',
+    #            (limit, offset,)
+    #        ).fetchall()
+
+    #        return render_template('blog/index.html', posts=posts, limit=limit, offset=offset)
+    #    except:
+    #        flash("Oops, something went wrong!")
+    #else:
+    posts = db.execute(
+            'SELECT p.id, title, body, created, author_id, is_hidden, username'
+            ' FROM post p JOIN user u ON p.author_id = u.id'
+            ' ORDER BY created DESC'
+            ' LIMIT ? OFFSET ?',
+            (limit, offset,)
+        ).fetchall()
+    return render_template('blog/index.html', posts=posts, limit=limit, offset=offset)
 
 def check_event_params(title, body, invited):
     error = None

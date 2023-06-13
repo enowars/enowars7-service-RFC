@@ -23,9 +23,10 @@
       </header>
       <a class="action" href="{{ url_for('auth.accessblogpost', id=post['id']) }}">View this Event</a>
     </article>
-    {% if not loop.last %}
-      <hr>
-    {% endif %}
+    <hr>
   {% endif %}
   {% endfor %}
+  <div class="text-center">
+    <a class="action" href="{{ url_for('blog.pages', limit=limit+200) }}">Show More</a>
+  </div>
 {% endblock %}

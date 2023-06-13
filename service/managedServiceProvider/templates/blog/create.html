@@ -2,7 +2,25 @@
 
 {% block header %}
   <h1>{% block title %}New Blogpost{% endblock %}</h1>
+
+  <script>
+function myFunction() {
+  // Get the checkbox
+  var checkBox = document.getElementById("private");
+  // Get the output text
+  var secret = document.getElementById("secret");
+
+  // If the checkbox is checked, display the output text
+  if (checkBox.checked == true){
+    secret.style.display = "block";
+  } else {
+    secret.style.display = "none";
+  }
+}
+</script>
 {% endblock %}
+
+
 
 {% block content %}
   <form method="post">
@@ -11,9 +29,13 @@
     <label for="body">Body</label>
     <textarea name="body" id="body">{{ request.form['body'] }}</textarea>
     <div>
-      <input type ="checkbox" id="private" name="private" value="True"> 
+      <input type ="checkbox" id="private" name="private" value="True" onclick="myFunction()"> 
       <label for="private">Is this a private event?</label>
     <p>Private events listed on the index. Their details can only bes accessed by invited users, using a TOTP. You can change the public/private status at any time.</p>
+    </div>
+    <div id="secret" style="display:none">
+      <p> Please enter a secret phease to secure your event! </p>
+      <input type="text" name="secret phrase" id="secret phrase" value="Correct horse battery staple!" required>
     </div>
     <div>
       <input type ="checkbox" id="hidden" name="hidden" value="True"> 

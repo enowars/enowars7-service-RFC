@@ -134,6 +134,10 @@ nav ul li a, nav ul li span, header .action {
   resize: vertical;
 }
 
+.text-center {
+  text-align: center;
+}
+
 input.danger {
   color: #cc2f2e;
 }
