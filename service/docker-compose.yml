@@ -2,6 +2,7 @@ version: '3'
 
 services:
   totp:
+    stop_grace_period: 3s
     build:
       context: .
       dockerfile: ./Dockerfile
