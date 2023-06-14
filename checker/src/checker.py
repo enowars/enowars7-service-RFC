@@ -22,7 +22,7 @@ from enochecker3 import (
     PutflagCheckerTaskMessage,
 )
 from enochecker3.utils import FlagSearcher, assert_equals, assert_in
-from httpx import AsyncClient, Request
+from httpx import AsyncClient, Request, Response
 
 """
 
@@ -41,7 +41,7 @@ class Totp_Client:
 
         self.secret_key = ""
         self.init_time = init_time
-        self.timestep = 15
+        self.timestep = 30
         self.timestep_counter = 0
         if num_digits > 10 or num_digits < 6:
             raise ValueError("The number of digits for the OTP must be between 6 and 10")
@@ -90,26 +90,28 @@ class Totp_Client:
 async def register_user(task, client: AsyncClient, logger):
     username = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(10))
     password = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
-    secret = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
+#    secret = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
 
     logger.debug(f"New user registration. Username: {username}, Password: {password}")
-    formdata = {"username": username, "password": password, "rpassword": password, "secret phrase": secret}
+#    formdata = {"username": username, "password": password, "rpassword": password, "secret phrase": secret}
+    formdata = {"username": username, "password": password, "rpassword": password}
     r = await client.post("/auth/register", data=formdata)
     assert_equals(r.status_code, 302, "Registration error in register user function.")
-    return username, password, secret
+    return username, password
 
 async def login_user(task, client, logger, username, password):
     logger.debug(f"Logging in user: {username}, with password: {password}")
     formdata = {"username": username, "password": password}
     r = await client.post("auth/login", data=formdata)
     assert_equals(r.status_code, 302, "Login Error in login_user function.")
+    logger.debug(f"Successfully loggen in user: {username}, with password: {password}")
     return r.cookies
 
-async def create_blogpost(client, cookie, flag, is_private, is_hidden, inviteduser):
+async def create_blogpost(client, logger, cookie, flag, is_private, is_hidden, inviteduser=''):
     title = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
+    secret = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
     body = flag
-    inviteduser = ""
-    formdata = {"title": title, "body": body, "inviteuser": inviteduser}
+    formdata = {"title": title, "body": body, "inviteuser": inviteduser, "secret phrase": secret}
     if is_private:
         formdata["private"] = "True"
 
@@ -117,23 +119,36 @@ async def create_blogpost(client, cookie, flag, is_private, is_hidden, invitedus
         formdata["hidden"] = "True"
 
     r = await client.post("/create", data=formdata, cookies=cookie)
-    # follow redirect
-    f = await client.get(r.headers['Location'], cookies=cookie)
     assert_equals(r.status_code, 302, "Blogpost creation error in create_blogpost function.")
 
-    # parse html to get the post_id
-    html = BeautifulSoup(f.text, "html.parser")
-    article = html.find('article', attrs={"class":"post"})
-    el_a = article.find('a', attrs={"class":"action"})
-    postid = el_a['href'].split('/')[1]
+    if is_hidden:
+        f = await client.get(r.headers['Location'], cookies=cookie)
+     # parse html to get the post_id
+        html = BeautifulSoup(f.text, "html.parser")
+        article = html.find('article', attrs={"class":"post"})
+        el_a = article.find('a', attrs={"class":"action"})
+        postid = el_a['href'].split('/')[1]
+        logger.debug(f"postid is: {postid}")
+        return title, secret, postid
+    return title, secret
 
-    return title, postid
+    # follow redirect
+#    f = await client.get(r.headers['Location'], cookies=cookie)
+#    logger.debug(f"response is: {r.text}")
+    # parse html to get the post_id
+#    html = BeautifulSoup(f.text, "html.parser")
+#    article = html.find('article', attrs={"class":"post"})
+#    el_a = article.find('a', attrs={"class":"action"})
+#    postid = el_a['href'].split('/')[1]
+
+#    return title, postid
 
 async def logout_user(client, logger, username):
     r = await client.get('auth/logout')
     logger.debug(f"logged out: {username}")
     assert_equals(r.status_code, 302, "Logout did not redirect to index")
     return
+
 # Deposit a flag in a private user post.
 @checker.putflag(0)
 async def putflag_zero(
@@ -145,20 +160,53 @@ async def putflag_zero(
     """
     TODO:
         - register a user and store credentials
-        - login as user with valid username, password and totp
+        - login as user with valid username, password
+        - register another user and invite him
         - create a new blogpost with a valid title, put the flag as the body and make it private
         - logout
     """
     flag = task.flag
-    username, password, secret = await register_user(task, client, logger)
-    cookie = await login_user(task, client, logger, username, password)
-    title, postid = await create_blogpost(client, cookie, flag, is_private=True, is_hidden=False, inviteduser="")
-    await logout_user(client, logger, username)
+    author, apassword = await register_user(task, client, logger)
+    authorcookie = await login_user(task, client, logger, author, apassword)
+    user_to_invite, upassword = await register_user(task, client, logger)
 
-    await db.set("nec_info", (username, password, secret, title, postid))
-    # TODO: only providing the title should suffice
-    attackinfo = {"title": title, "postid": postid}
+    title, secret = await create_blogpost(client, logger, authorcookie, flag, is_private=True, is_hidden=False, inviteduser=user_to_invite)
+    await logout_user(client, logger, author)
+
+    await db.set("nec_info", (title, user_to_invite, upassword))
+#    attackinfo = {"title": title, "postid": postid}
+    attackinfo = {"title": title}
     return json.dumps(attackinfo)
+
+
+# Deposit a flag in a private user post.
+@checker.putflag(1)
+async def putflag_one(
+    task: PutflagCheckerTaskMessage,
+    logger: LoggerAdapter,
+    client: AsyncClient,
+    db: ChainDB,
+) -> str:
+    """
+    TODO:
+        - register a user and store credentials
+        - login as user with valid username, password
+        - register another user and invite him
+        - create a new blogpost with a valid title, put the flag as the body and make it private
+        - logout
+    """
+    flag = task.flag
+    author, apassword = await register_user(task, client, logger)
+    authorcookie = await login_user(task, client, logger, author, apassword)
+    user_to_invite, upassword = await register_user(task, client, logger)
+
+    title, secret, postid= await create_blogpost(client, logger, authorcookie, flag, is_private=False, is_hidden=True, inviteduser=user_to_invite)
+    await logout_user(client, logger, author)
+
+    await db.set("nec_info", (title, user_to_invite, upassword, secret))
+    attackinfo = {"postid": postid}
+    return json.dumps(attackinfo)
+
 
 @checker.getflag(0)
 async def getflag_zero(
@@ -186,6 +234,10 @@ async def getflag_zero(
     assert_in(task.flag, r.text, "The flag could not be retrieved in the getflag method.")
 
     await logout_user(client, logger, userdata[0])
+    return
+
+@checker.getflag(1)
+async def getflag_one():
     return
 
 #find timestamp and postid for post given by title

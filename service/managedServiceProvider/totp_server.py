@@ -17,7 +17,7 @@ class Totp:
             raise ValueError("The number of digits for the OTP must be between 6 and 10")
         self.num_digits = num_digits
         self.timestep_counter = timestep_counter
-        self.timestep = 15
+        self.timestep = 30
         self.init_time = init_time #unix time in UTC
 
         self.digest = hashlib.sha1
