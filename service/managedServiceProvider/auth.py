@@ -202,8 +202,8 @@ def accessblogpost(id):
         elif query['is_hidden'] == "FALSE" and query['is_private'] == "FALSE":
             return render_template('blog/blogpost.html', post=query)
         #TODO invitations should be irrelevant here, since they require totp
-        elif query2 is not None:
-            return render_template('blog/blogpost.html', post=query)
+#        elif query2 is not None:
+#            return render_template('blog/blogpost.html', post=query)
         else:
             return render_template('auth/test_totp_login.html', title=query['title'])
 

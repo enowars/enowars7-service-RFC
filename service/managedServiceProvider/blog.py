@@ -41,7 +41,7 @@ def pages(limit=200):
         ).fetchall()
     return render_template('blog/index.html', posts=posts, limit=limit, offset=offset)
 
-def check_event_params(title, body, invited):
+def check_event_params(title, body, invited, secret_phrase):
     error = None
     inv_bool = True
     if not invited:
@@ -54,6 +54,8 @@ def check_event_params(title, body, invited):
         error = "The invited username is invalid."
     elif invited == g.user['username']:
         error = "You cannot invite yourself to an event."
+    elif not secret_phrase or len(secret_phrase) < 20:
+        error = "A secret phrase is required and has to be at least 20 characters long."
     return error
 
 
@@ -76,6 +78,59 @@ def handle_invite(invited, title, ferror):
         error = "Oops! Seems like the user you wanted to invite does not exist."
 
     return error
+
+
+def insert_event(is_public, is_hidden, is_private, title, body, postkey):
+
+    if is_public == "TRUE":
+        try:
+            db = get_db()
+            db.execute(
+                'INSERT INTO post (title, body, author_id, is_private, is_hidden)'
+                ' VALUES (?, ?, ?, ?, ?)',
+                (title, body, g.user['id'], is_private, is_hidden)
+            )
+            db.commit()
+        except:
+            return "The given title already exists. Try a different one!"
+
+    elif is_hidden == "TRUE":
+        try:
+            db = get_db()
+            db.execute(
+                'INSERT INTO post (title, body, author_id, key, is_private, is_hidden)'
+                ' VALUES (?, ?, ?, ?, ?, ?)',
+                (title, body, g.user['id'], postkey, is_private, is_hidden)
+            )
+            db.commit()
+        except:
+            return "The given title already exists. Try a different one!"
+    
+    else:
+        try:
+            db = get_db()
+            db.execute(
+                'INSERT INTO post (title, body, author_id, is_private, is_hidden)'
+                ' VALUES (?, ?, ?, ?, ?)',
+                (title, body, g.user['id'], is_private, is_hidden)
+            )
+            db.commit()
+        except:
+            return "The given title already exists. Try a different one!"
+    return None
+
+def update_user_post_count(query):
+    try:
+        db = get_db()
+        num_posts = query['num_posts'] + 1
+        db.execute(
+            'UPDATE user SET num_posts = ?'
+            ' WHERE id = ?',
+            (num_posts, g.user['id'])
+        )
+        db.commit()
+    except:
+        return "Could not update number of posts for user"
 
 @bp.route('/create', methods=('GET', 'POST'))
 @login_required
@@ -101,47 +156,31 @@ def create():
         title = title.strip()
         body = request.form['body']
         invited = request.form['inviteuser']
-        error = check_event_params(title, body, invited)
-
-        is_private = "FALSE"
-        if 'private' in request.form:
-            if request.form['private'] == "True":
-                is_private = "TRUE"
-
-        is_hidden = "FALSE"
-        if 'hidden' in request.form:
-            if request.form['hidden'] == "True":
-                is_hidden = "TRUE"
-
+        postkey = request.form['secret phrase']
+        error = check_event_params(title, body, invited, postkey)
+        
         if error is not None:
             flash(error)
         else:
-            postkey = request.form['title'] + g.user['username']
-            db = get_db()
-            try:
-                db.execute(
-                    'INSERT INTO post (title, body, author_id, key, is_private, is_hidden)'
-                    ' VALUES (?, ?, ?, ?, ?, ?)',
-                    (title, body, g.user['id'], postkey, is_private, is_hidden)
-                )
-                db.commit()
-            except:
-                error = "The given title already exists. Try again!"
-                #flash(error)
-                #fixes vulnerability
-                #return render_template('blog/create.html')
+            is_hidden = "FALSE"
+            if 'hidden' in request.form:
+                if request.form['hidden'] == "True":
+                    is_hidden = "TRUE"
 
-            try:
-                db = get_db()
-                num_posts = query['num_posts'] + 1
-                db.execute(
-                    'UPDATE user SET num_posts = ?'
-                    ' WHERE id = ?',
-                    (num_posts, g.user['id'])
-                )
-                db.commit()
-            except:
-                error = "Could not update number of posts for user"
+            is_private = "FALSE"
+            if 'private' in request.form:
+                if request.form['private'] == "True":
+                    is_private = "TRUE"
+
+            if 'is_hidden' == "TRUE":
+                error = insert_event("FALSE", is_hidden, is_private, title, body, postkey)
+            elif is_private == "TRUE":
+                error = insert_event("FALSE", is_hidden, is_private, title, body, postkey)
+            else:
+                error = insert_event("TRUE", is_hidden, is_private, title, body, postkey)
+
+            if error is None:
+                error = update_user_post_count(query)
 
             if len(invited) != 0:
                 error = handle_invite(invited, title, error)
@@ -155,6 +194,13 @@ def create():
                 return redirect(url_for('auth.accessblogpost', id=postquery['id']))
 
     return render_template('blog/create.html')
+
+
+#            postkey = request.form['title'] + g.user['username']
+               #flash(error)
+                #fixes vulnerability
+                #return render_template('blog/create.html')
+
 
 def get_post(id, check_author=True):
     post = get_db().execute(

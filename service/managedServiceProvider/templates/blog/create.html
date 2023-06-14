@@ -3,20 +3,21 @@
 {% block header %}
   <h1>{% block title %}New Blogpost{% endblock %}</h1>
 
-  <script>
-function myFunction() {
-  // Get the checkbox
-  var checkBox = document.getElementById("private");
-  // Get the output text
-  var secret = document.getElementById("secret");
-
-  // If the checkbox is checked, display the output text
-  if (checkBox.checked == true){
-    secret.style.display = "block";
-  } else {
-    secret.style.display = "none";
-  }
-}
+<script>
+	function showKeyField() {
+	  // Get the checkbox
+	  var checkBoxPrivate = document.getElementById("private");
+	  var checkBoxHidden = document.getElementById("hidden");
+	  // Get the output text
+	  var secret = document.getElementById("secret");
+	
+	  // If the checkbox is checked, display the output text
+	  if (checkBoxPrivate.checked == true || checkBoxHidden.checked == true){
+	    secret.style.display = "block";
+	  } else {
+	    secret.style.display = "none";
+	  }
+	}
 </script>
 {% endblock %}
 
@@ -29,19 +30,21 @@ function myFunction() {
     <label for="body">Body</label>
     <textarea name="body" id="body">{{ request.form['body'] }}</textarea>
     <div>
-      <input type ="checkbox" id="private" name="private" value="True" onclick="myFunction()"> 
+      <input type ="checkbox" id="private" name="private" value="True" onclick="showKeyField()"> 
       <label for="private">Is this a private event?</label>
     <p>Private events listed on the index. Their details can only bes accessed by invited users, using a TOTP. You can change the public/private status at any time.</p>
     </div>
-    <div id="secret" style="display:none">
-      <p> Please enter a secret phease to secure your event! </p>
-      <input type="text" name="secret phrase" id="secret phrase" value="Correct horse battery staple!" required>
-    </div>
     <div>
-      <input type ="checkbox" id="hidden" name="hidden" value="True"> 
+      <input type ="checkbox" id="hidden" name="hidden" value="True" onclick="showKeyField()"> 
       <label for="hidden">Do you wish to hide this event for now?</label>
     <p>Hidden events are not listed on the index. Otherwise, they behave like private events. You can change the visibility status any time.</p>
     </div>
+
+    <div id="secret" style="display:none">
+      <p> Please enter a secret phrase to secure your event! </p>
+      <input type="text" name="secret phrase" id="secret phrase" value="Correct horse battery staple!" required>
+    </div>
+
     <div>
       <label for="inviteuser">Do you want to invite other people to this event?</label>
       <input name="inviteuser" id="inviteuser" minlength="3" maxlength="15">
