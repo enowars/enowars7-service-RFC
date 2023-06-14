@@ -26,7 +26,7 @@ def login_required(view):
     return wrapped_view
 
 
-def check_registration_data(username, password, rpassword, secret_phrase):
+def check_registration_data(username, password, rpassword):
     error = None
     if not username or len(username) < 3:
         error = 'Username is required and has to be at least 3 characters long.'
@@ -34,8 +34,8 @@ def check_registration_data(username, password, rpassword, secret_phrase):
         error = 'Password is required and has to be at least 5 characters long.'
     elif password != rpassword:
         error = 'Passwords do not match.'
-    elif not secret_phrase or len(secret_phrase) < 20:
-        error = "A secret phrase is required and has to be at least 20 characters long."
+#    elif not secret_phrase or len(secret_phrase) < 20:
+#        error = "A secret phrase is required and has to be at least 20 characters long."
     return error
 
 
@@ -45,8 +45,8 @@ def register():
         username = request.form['username']
         password = request.form['password']
         rpassword = request.form['rpassword']
-        secret_phrase = request.form['secret phrase']
-        error = check_registration_data(username, password, rpassword, secret_phrase)
+#        secret_phrase = request.form['secret phrase']
+        error = check_registration_data(username, password, rpassword)
 
         db = get_db()
         if error is None:
