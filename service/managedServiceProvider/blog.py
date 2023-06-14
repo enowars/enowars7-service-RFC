@@ -27,7 +27,7 @@ def index():
 @bp.route('/page/<int:limit>', methods=('GET', 'POST'))
 def pages(limit=200):
     if limit > 9223372036854775807 or limit < 0:
-        flash("No further posts to show!")a
+        flash("No further posts to show!")
         limit = 200
 
     offset=0
