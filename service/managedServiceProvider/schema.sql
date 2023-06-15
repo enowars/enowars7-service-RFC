@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS post (
   body TEXT NOT NULL,
   is_private INTEGER NOT NULL DEFAULT FALSE,
   is_hidden INTEGER NOT NULL DEFAULT FALSE,
-  key TEXT NOT NULL DEFAULT "Correct horse battery staple!",
+  key TEXT DEFAULT "Correct horse battery staple!",
   FOREIGN KEY (author_id) REFERENCES user (id) ON DELETE CASCADE
 );
 
