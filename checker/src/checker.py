@@ -50,7 +50,7 @@ class Totp_Client:
     def generate_shared_secret(self, secret: str=""):
         if not secret:
             if not self.secret_key:
-                secret_phrase = "Hier könnte Ihr Geheimnis stehen!"
+                secret_phrase = "Correct horse battery staple!"
                 secret_key_tmp = hashlib.sha256(self.secret_phrase.encode())
                 self.secret_key = secret_key_tmp.digest()
         else:
@@ -90,10 +90,8 @@ class Totp_Client:
 async def register_user(task, client: AsyncClient, logger):
     username = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(10))
     password = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
-#    secret = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
-
     logger.debug(f"New user registration. Username: {username}, Password: {password}")
-#    formdata = {"username": username, "password": password, "rpassword": password, "secret phrase": secret}
+
     formdata = {"username": username, "password": password, "rpassword": password}
     r = await client.post("/auth/register", data=formdata)
     assert_equals(r.status_code, 302, "Registration error in register user function.")
@@ -132,17 +130,6 @@ async def create_blogpost(client, logger, cookie, flag, is_private, is_hidden, i
         return title, secret, postid
     return title, secret
 
-    # follow redirect
-#    f = await client.get(r.headers['Location'], cookies=cookie)
-#    logger.debug(f"response is: {r.text}")
-    # parse html to get the post_id
-#    html = BeautifulSoup(f.text, "html.parser")
-#    article = html.find('article', attrs={"class":"post"})
-#    el_a = article.find('a', attrs={"class":"action"})
-#    postid = el_a['href'].split('/')[1]
-
-#    return title, postid
-
 async def logout_user(client, logger, username):
     r = await client.get('auth/logout')
     logger.debug(f"logged out: {username}")
@@ -150,6 +137,7 @@ async def logout_user(client, logger, username):
     return
 
 # Deposit a flag in a private user post.
+# Puts the post title attackinfgo
 @checker.putflag(0)
 async def putflag_zero(
     task: PutflagCheckerTaskMessage,
@@ -174,12 +162,11 @@ async def putflag_zero(
     await logout_user(client, logger, author)
 
     await db.set("nec_info", (title, user_to_invite, upassword))
-#    attackinfo = {"title": title, "postid": postid}
     attackinfo = {"title": title}
     return json.dumps(attackinfo)
 
 
-# Deposit a flag in a private user post.
+# Deposit a flag in a hidden user post.
 @checker.putflag(1)
 async def putflag_one(
     task: PutflagCheckerTaskMessage,
@@ -208,6 +195,45 @@ async def putflag_one(
     return json.dumps(attackinfo)
 
 
+def getdata_from_accountinfo(response, client, logger, title):
+    try:
+        html = BeautifulSoup(response.text, "html.parser")
+        el_article = html.find_all('article', attrs={"class":"post"})
+
+        for article in el_article:
+            el_h4 = article.find('h4')
+            if el_h4 is None:
+                break
+            logger.debug(f"the header is is: {el_h4}")
+            ftitle = el_h4.string
+            ftitle = ftitle.split("to: ")[1]
+            logger.debug(f"the title is: {ftitle}")
+
+            if ftitle == title:
+                el_div_date = article.find("div", attrs={"class":"about"})
+                date = (el_div_date.string).split(": ")[1]
+
+                el_div_postkey = article.find("div", attrs={"class":"totp-info"})
+                postkey = (eld_div_postkey.string).split("event key is: ")[1]
+
+                el_a = article.find('a', attrs={"class":"action"})
+                posturl = el_a['href']
+                return date, postkey, posturl
+
+        raise MumbleException("relevant data could not be retrieved from Account Info...")
+    except:
+        msg = f"post with title {title} could not be found"
+        raise MumbleException(msg)
+
+
+"""
+    TODO:
+        - retrieve valid credentials from DB
+        - login as the user and view your account info
+        - find the event with the given title and parse time and key
+        - access the desired post
+        - retrieve the flag from the posts body
+"""
 @checker.getflag(0)
 async def getflag_zero(
     task: GetflagCheckerTaskMessage,
@@ -215,26 +241,45 @@ async def getflag_zero(
     client: AsyncClient,
     db: ChainDB
 ) -> None:
-    """
-    TODO:
-        - retrieve valid credentials from DB
-        - login as the user and access the desired post
-        - retrieve the flag from the posts body
-    """
+
     try:
         userdata = await db.get("nec_info")
     except KeyError:
         #is mumble here correct or will lead to deduction in points?
         raise MumbleException("Missing database entry from putflag operation.")
 
-    cookie = await login_user(task, client, logger, username=userdata[0], password=userdata[1])
-    url ="/auth/accessblogpost/" + userdata[4]
-    r = await client.get(url, cookies=cookie)
-    assert_equals(r.status_code, 200, "error when getting blogpost")
+    cookie = await login_user(task, client, logger, username=userdata[1], password=userdata[2])
+    r = await client.get('/auth/accountInfo', cookies=cookie)
+    logger.debug(f"accessing accountinfo: {r.text}")
+    date, postkey, posturl = getdata_from_accountinfo(r, client, logger, userdata[0])
+    timestamp = convert_str_to_unixtimestamp(date)
+
+    totp_device = Totp_Client(init_time=timestamp)
+    totp_device.generate_shared_secret(postkey)
+    totp_device.calculate_current_timestep_count()
+    usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter)
+    logger.debug(f"accessing post: {userdata[0]}, timestamp: {timestamp}, usercode: {usercode}")
+
+    r = await client.post(posturl, data={"code":usercode}, cookies=cookie)
+    logger.debug(f"response: {r.text}")
     assert_in(task.flag, r.text, "The flag could not be retrieved in the getflag method.")
 
     await logout_user(client, logger, userdata[0])
     return
+#    if flag := searcher.search_flag(r.text):
+ #       return flag
+
+    # html = BeautifulSoup(r.text, "html.parser")
+       # body = html.find('p', attrs={"class":"body"})
+       # if body is not None:
+       #     logger.debug(f"paragraph: {body.string}")
+       #     if flag := searcher.search_flag(r.text):
+       #         #await logout_user(client, logger, username)
+       #         return flag
+
+    #assert_equals(r.status_code, 200, "error when getting blogpost")
+    #assert_in(task.flag, r.text, "The flag could not be retrieved in the getflag method.")
+
 
 @checker.getflag(1)
 async def getflag_one():
@@ -260,17 +305,24 @@ def find_params(r, username, postid, title):
         raise MumbleException(msg)
 
 
-def convert_str_to_unixtimestamp(time):
-    #date, timec = timestr.split(' ', 1)
-    date = time[0]
-    timec = time[1]
-    datecomp=date.split('-')
+def convert_str_to_unixtimestamp(timestr):
+    #date = time[0]
+    #timec = time[1]
     #timec = timec.split('.', 1)[0]
+
+    date, timec = timestr.split(' ', 1)
+    datecomp=date.split('-')
     timecomp=timec.split(':')
-    #create new aware datetime object from date and time components, note that we do not have seconds.
-    dto = datetime.datetime(int(datecomp[0]), int(datecomp[1]), int(datecomp[2]), int(timecomp[0]), int(timecomp[1]), tzinfo=timezone.utc)
-    #dto = datetime.datetime(int(datecomp[0]), int(datecomp[1]), int(datecomp[2]), int(timecomp[0]), int(timecomp[1]), int(timecomp[2]), tzinfo=timezone.utc)
-    return dto.timestamp()
+    if len(timecomp) == 2:
+        #create new aware datetime object from date and time components, note that we do not have seconds.
+        dto = datetime.datetime(int(datecomp[0]), int(datecomp[1]), int(datecomp[2]), int(timecomp[0]), int(timecomp[1]), tzinfo=timezone.utc)
+        return dto.timestamp()
+    elif len(timecomp) == 3:
+        dto = datetime.datetime(int(datecomp[0]), int(datecomp[1]), int(datecomp[2]), int(timecomp[0]), int(timecomp[1]), int(timecomp[2]), tzinfo=timezone.utc)
+        return dto.timestamp()
+    else:
+        raise MumbleException("Unexpected timestamp format!")
+
 
 @checker.exploit(0)
 async def exploit_zero(task: ExploitCheckerTaskMessage,
