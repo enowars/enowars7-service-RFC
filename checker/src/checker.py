@@ -417,7 +417,7 @@ async def exploit_one(task: ExploitCheckerTaskMessage,
     if task.attack_info == "":
         raise InternalErrorException("Missing attack info for exploit")
     attackinfo = json.loads(task.attack_info)
-    title = attackinfo['title']
+    postid = attackinfo['postid']
 
     username, password  = await register_user(task, client, logger)
     cookie = await login_user(task, client, logger, username, password)
@@ -439,16 +439,9 @@ async def exploit_one(task: ExploitCheckerTaskMessage,
 
         r = await client.post(posturl, data={"code":usercode}, cookies=cookie)
         logger.debug(f"response: {r.text}")
-        html = BeautifulSoup(r.text, "html.parser")
-        try:
-            body = html.find('p', attrs={"class":"body"})
-            if body is not None:
-                logger.debug(f"paragraph: {body.string}")
-                if flag := searcher.search_flag(r.text):
-                    #await logout_user(client, logger, username)
-                    return flag
-        except:
-            raise MumbleException("Flag not found in exploit")
+        if flag := searcher.search_flag(r.text):
+            #await logout_user(client, logger, username)
+            return flag
 
     #await logout_user(client, logger, username)
     raise MumbleException("Flag not found in exploit")
