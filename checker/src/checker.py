@@ -204,17 +204,17 @@ def getdata_from_accountinfo(response, client, logger, title):
             el_h4 = article.find('h4')
             if el_h4 is None:
                 break
-            logger.debug(f"the header is is: {el_h4}")
             ftitle = el_h4.string
             ftitle = ftitle.split("to: ")[1]
-            logger.debug(f"the title is: {ftitle}")
 
             if ftitle == title:
                 el_div_date = article.find("div", attrs={"class":"about"})
-                date = (el_div_date.string).split(": ")[1]
+                date = el_div_date.string
+                date = date.split(": ")[1]
 
                 el_div_postkey = article.find("div", attrs={"class":"totp-info"})
-                postkey = (eld_div_postkey.string).split("event key is: ")[1]
+                postkey = el_div_postkey.string
+                postkey = postkey.split("event key is: ")[1]
 
                 el_a = article.find('a', attrs={"class":"action"})
                 posturl = el_a['href']
@@ -266,23 +266,38 @@ async def getflag_zero(
 
     await logout_user(client, logger, userdata[0])
     return
-#    if flag := searcher.search_flag(r.text):
- #       return flag
-
-    # html = BeautifulSoup(r.text, "html.parser")
-       # body = html.find('p', attrs={"class":"body"})
-       # if body is not None:
-       #     logger.debug(f"paragraph: {body.string}")
-       #     if flag := searcher.search_flag(r.text):
-       #         #await logout_user(client, logger, username)
-       #         return flag
-
-    #assert_equals(r.status_code, 200, "error when getting blogpost")
-    #assert_in(task.flag, r.text, "The flag could not be retrieved in the getflag method.")
-
 
 @checker.getflag(1)
-async def getflag_one():
+async def getflag_one(
+    task: GetflagCheckerTaskMessage,
+    logger: LoggerAdapter,
+    client: AsyncClient,
+    db: ChainDB
+) -> None:
+
+    try:
+        userdata = await db.get("nec_info")
+    except KeyError:
+        #is mumble here correct or will lead to deduction in points?
+        raise MumbleException("Missing database entry from putflag operation.")
+
+    cookie = await login_user(task, client, logger, username=userdata[1], password=userdata[2])
+    r = await client.get('/auth/accountInfo', cookies=cookie)
+    logger.debug(f"accessing accountinfo: {r.text}")
+    date, postkey, posturl = getdata_from_accountinfo(r, client, logger, userdata[0])
+    timestamp = convert_str_to_unixtimestamp(date)
+
+    totp_device = Totp_Client(init_time=timestamp)
+    totp_device.generate_shared_secret(postkey)
+    totp_device.calculate_current_timestep_count()
+    usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter)
+    logger.debug(f"accessing post: {userdata[0]}, timestamp: {timestamp}, usercode: {usercode}")
+
+    r = await client.post(posturl, data={"code":usercode}, cookies=cookie)
+    logger.debug(f"response: {r.text}")
+    assert_in(task.flag, r.text, "The flag could not be retrieved in the getflag method.")
+
+    await logout_user(client, logger, userdata[0])
     return
 
 #find timestamp and postid for post given by title
