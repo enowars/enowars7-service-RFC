@@ -197,7 +197,6 @@ def accessblogpost(id):
 def account_info():
     db = get_db()
     error = None
-    #TODO currently query returns all blogposts
     try:
         posts = db.execute(
             'SELECT p.id, title, created, author_id, is_hidden, key, username'
@@ -217,7 +216,6 @@ def account_info():
         render_template('auth/account.html', posts=None, invitations=None)
 
 
-    # Update usert accout information
     if request.method == 'POST':
         if g.user == None:
             abort(404, "You have to be logged in to view this page")
