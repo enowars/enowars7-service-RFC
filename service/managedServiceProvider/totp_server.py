@@ -51,7 +51,7 @@ class Totp:
 
     def calculate_current_timestep_count(self):
         dt = datetime.datetime.now(timezone.utc)
-        time_diff = int(dt.timestamp()) - int(self.init_time) # floor the diff or fllor individually?
+        time_diff = int(dt.timestamp()) - int(self.init_time)
         steps = int(time_diff/self.timestep)
         self.timestep_counter = steps
         return
@@ -67,6 +67,7 @@ class Totp:
             self.resynchronize(offset)
             return match
 
+    #currenlty usesless
     def check_lookahead_window(self, user_otp: int, shared_secret: str):
         offset = self.lookahead+1
         match = False
@@ -79,7 +80,7 @@ class Totp:
 
         return match, offset
 
-    #TODO
+    #currently useless
     def resynchronize(self, offset: int):
         if offset > self.lookahead:
             print("Out-of-sync! Could not find valid otp wihtin  lookahead window, resyncing.")

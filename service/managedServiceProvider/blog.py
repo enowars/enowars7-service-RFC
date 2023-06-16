@@ -105,7 +105,7 @@ def insert_event(is_public, is_hidden, is_private, title, body, postkey):
             db.commit()
         except:
             return "The given title already exists. Try a different one!"
-    
+
     else:
         try:
             db = get_db()
@@ -158,7 +158,7 @@ def create():
         invited = request.form['inviteuser']
         postkey = request.form['secret phrase']
         error = check_event_params(title, body, invited, postkey)
-        
+
         if error is not None:
             flash(error)
         else:
@@ -194,12 +194,6 @@ def create():
                 return redirect(url_for('auth.accessblogpost', id=postquery['id']))
 
     return render_template('blog/create.html')
-
-
-#            postkey = request.form['title'] + g.user['username']
-               #flash(error)
-                #fixes vulnerability
-                #return render_template('blog/create.html')
 
 
 def get_post(id, check_author=True):
@@ -261,6 +255,7 @@ def update(id):
 
     return render_template('blog/update_nodel.html', post=post)
 
+#CURRENTLY NOT IN USE
 @bp.route('/<int:id>/delete', methods=('POST',))
 @login_required
 def delete(id):

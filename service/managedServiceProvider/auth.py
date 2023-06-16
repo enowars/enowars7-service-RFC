@@ -10,7 +10,6 @@ from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for
 )
 from werkzeug.security import check_password_hash, generate_password_hash
-
 from managedServiceProvider.db import get_db
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -34,8 +33,6 @@ def check_registration_data(username, password, rpassword):
         error = 'Password is required and has to be at least 5 characters long.'
     elif password != rpassword:
         error = 'Passwords do not match.'
-#    elif not secret_phrase or len(secret_phrase) < 20:
-#        error = "A secret phrase is required and has to be at least 20 characters long."
     return error
 
 
@@ -45,7 +42,6 @@ def register():
         username = request.form['username']
         password = request.form['password']
         rpassword = request.form['rpassword']
-#        secret_phrase = request.form['secret phrase']
         error = check_registration_data(username, password, rpassword)
 
         db = get_db()
@@ -61,10 +57,6 @@ def register():
             except db.IntegrityError:
                 error = f"User {username} is already registered."
             else:
-                #OLD - used for redirect to totp login
-                #rand = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
-                #dyn_url = rand + "?" + str(username)
-                #return redirect(url_for("auth.totp_registration", dyn_url=dyn_url))
                 return redirect(url_for("auth.login"))
         flash(error)
 
@@ -107,10 +99,6 @@ def login():
             session.clear()
             session['user_id'] = user['id']
             return redirect(url_for("blog.index"))
-
-            #rand = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
-            #dyn_url = rand + "?" + str(username)
-            #return redirect(url_for("auth.totp_login", dyn_url=dyn_url))
 
         flash(error)
 
@@ -177,7 +165,6 @@ def accessblogpost(id):
 
     elif request.method == 'GET':
         db = get_db()
-        #TODO fix error. When accessing blogpost via url with non-existent id --> internal server error
         try:
             query = db.execute(
             'SELECT title, body, created, author_id, is_private, is_hidden, p.id, username'
@@ -196,14 +183,10 @@ def accessblogpost(id):
         if query is None:
             return redirect(url_for('index'))
 
-        # Check if the current user may access the given blogpost
         if g.user['id'] == query['author_id']:
             return render_template('blog/blogpost.html', post=query)
         elif query['is_hidden'] == "FALSE" and query['is_private'] == "FALSE":
             return render_template('blog/blogpost.html', post=query)
-        #TODO invitations should be irrelevant here, since they require totp
-#        elif query2 is not None:
-#            return render_template('blog/blogpost.html', post=query)
         else:
             return render_template('auth/test_totp_login.html', title=query['title'])
 
