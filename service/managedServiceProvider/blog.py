@@ -86,9 +86,9 @@ def insert_event(is_public, is_hidden, is_private, title, body, postkey):
         try:
             db = get_db()
             db.execute(
-                'INSERT INTO post (title, body, author_id, is_private, is_hidden)'
+                'INSERT INTO post (title, body, author_id, key, is_private, is_hidden)'
                 ' VALUES (?, ?, ?, ?, ?)',
-                (title, body, g.user['id'], is_private, is_hidden)
+                (title, body, g.user['id'], postkey, is_private, is_hidden)
             )
             db.commit()
         except:
@@ -110,9 +110,9 @@ def insert_event(is_public, is_hidden, is_private, title, body, postkey):
         try:
             db = get_db()
             db.execute(
-                'INSERT INTO post (title, body, author_id, is_private, is_hidden)'
+                'INSERT INTO post (title, body, author_id, key, is_private, is_hidden)'
                 ' VALUES (?, ?, ?, ?, ?)',
-                (title, body, g.user['id'], is_private, is_hidden)
+                (title, body, g.user['id'], postkey, is_private, is_hidden)
             )
             db.commit()
         except:
@@ -131,6 +131,20 @@ def update_user_post_count(query):
         db.commit()
     except:
         return "Could not update number of posts for user"
+
+# FIX FIX FIX FIX
+#def update_postkey(postkey, title):
+#    try:
+#        db = get_db()
+#        db.execute(
+#            'UPDATE post SET key = ? WHERE title = ?',
+#            (postkey, title)
+#        )
+#        db.commit()
+#    except:
+#        return "Failed to update keys"
+#
+#    return None
 
 @bp.route('/create', methods=('GET', 'POST'))
 @login_required
@@ -182,6 +196,13 @@ def create():
             if error is None:
                 error = update_user_post_count(query)
 
+            ### FIX FIX FIX FIX
+            #if error is None:
+            #    error = update_postkey(postkey, title)
+
+            #if error is not None:
+            #    render_template('blog/create.html')
+
             if len(invited) != 0:
                 error = handle_invite(invited, title, error)
             if error is not None:
@@ -220,7 +241,8 @@ def update(id):
         title = request.form['title']
         body = request.form['body']
         invited = request.form['inviteuser']
-        error = check_event_params(title, body, invited)
+        postkey = request.form['secret phrase']
+        error = check_event_params(title, body, invited, postkey)
 
         is_private = "FALSE"
         if 'private' in request.form:
@@ -235,6 +257,8 @@ def update(id):
         if error is not None:
             flash(error)
         else:
+
+            #elaborate what happens if we duplicate a title here --> database error?
             db = get_db()
             db.execute(
                 'UPDATE post SET title = ?, body = ?, is_private = ?, is_hidden = ?'

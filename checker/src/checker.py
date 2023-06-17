@@ -175,9 +175,9 @@ async def putflag_zero(
     await logout_user(client, logger, author, authorcookie)
 
     await db.set("nec_info", (title, user_to_invite, upassword))
-    attackinfo = {"title": title}
-    return json.dumps(attackinfo)
-
+#    attackinfo = {"title": title}
+#    return json.dumps(attackinfo)
+    return str(title)
 
 # Deposit a flag in a hidden user post.
 @checker.putflag(1)
@@ -204,9 +204,9 @@ async def putflag_one(
     await logout_user(client, logger, author, authorcookie)
 
     await db.set("nec_info", (title, user_to_invite, upassword, secret))
-    attackinfo = {"postid": postid}
-    return json.dumps(attackinfo)
-
+#    attackinfo = {"postid": postid}
+#    return json.dumps(attackinfo)
+    return str(postid)
 
 def getdata_from_accountinfo(response, client, logger, title):
     try:
