@@ -44,6 +44,7 @@ def pages(limit=200):
 def check_event_params(title, body, invited, secret_phrase):
     error = None
     inv_bool = True
+    default_key = "Correct horse battery staple!"
     if not invited:
         inv_bool = False
     if not title or len(title) > 50:
@@ -54,8 +55,8 @@ def check_event_params(title, body, invited, secret_phrase):
         error = "The invited username is invalid."
     elif invited == g.user['username']:
         error = "You cannot invite yourself to an event."
-    elif not secret_phrase or len(secret_phrase) < 20:
-        error = "A secret phrase is required and has to be at least 20 characters long."
+    elif not secret_phrase or len(secret_phrase) < 20 or secret_phrase == deafult_key:
+        error = "A secret phrase is required, has to be at least 20 characters long and must not be the default key!"
     return error
 
 
@@ -86,8 +87,8 @@ def insert_event(is_public, is_hidden, is_private, title, body, postkey):
         try:
             db = get_db()
             db.execute(
-                'INSERT INTO post (title, body, author_id, is_private, is_hidden)'
-                ' VALUES (?, ?, ?, ?, ?)',
+                'INSERT INTO post (title, body, author_id, key, is_private, is_hidden)'
+                ' VALUES (?, ?, ?, ?, ?, ?)',
                 (title, body, g.user['id'], is_private, is_hidden)
             )
             db.commit()
@@ -110,13 +111,14 @@ def insert_event(is_public, is_hidden, is_private, title, body, postkey):
         try:
             db = get_db()
             db.execute(
-                'INSERT INTO post (title, body, author_id, key, is_private, is_hidden)'
+                'INSERT INTO post (title, body, author_id, is_private, is_hidden)'
                 ' VALUES (?, ?, ?, ?, ?, ?)',
                 (title, body, g.user['id'], postkey, is_private, is_hidden)
             )
             db.commit()
         except:
             return "The given title already exists. Try a different one!"
+
     return None
 
 def update_user_post_count(query):
@@ -186,7 +188,7 @@ def create():
                 if request.form['private'] == "True":
                     is_private = "TRUE"
 
-            if 'is_hidden' == "TRUE":
+            if is_hidden == "TRUE":
                 error = insert_event("FALSE", is_hidden, is_private, title, body, postkey)
             elif is_private == "TRUE":
                 error = insert_event("FALSE", is_hidden, is_private, title, body, postkey)
