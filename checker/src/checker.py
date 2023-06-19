@@ -124,8 +124,6 @@ async def create_blogpost(client, logger, cookie, flag, is_private, is_hidden, i
     if is_hidden:
         formdata["hidden"] = "True"
 
-
-
     r = await client.post("/create", data=formdata, cookies=cookie)
     if isexploit:
         assert_equals(r.status_code, 200, "Blogpost creation error in create_blogpost function -- for exploit")
@@ -379,8 +377,9 @@ async def exploit_zero(task: ExploitCheckerTaskMessage,
     """
     if task.attack_info == "":
         raise InternalErrorException("Missing attack info for exploit")
-    attackinfo = json.loads(task.attack_info)
-    title = attackinfo['title']
+    #attackinfo = json.loads(task.attack_info)
+    #title = attackinfo['title']
+    title = task.attack_info
 
     username, password  = await register_user(task, client, logger)
     cookie = await login_user(task, client, logger, username, password)
@@ -425,8 +424,9 @@ async def exploit_one(task: ExploitCheckerTaskMessage,
     """
     if task.attack_info == "":
         raise InternalErrorException("Missing attack info for exploit")
-    attackinfo = json.loads(task.attack_info)
-    postid = attackinfo['postid']
+    #attackinfo = json.loads(task.attack_info)
+    #postid = attackinfo['postid']
+    postid = task.attack_info
 
     inviter, ipassword  = await register_user(task, client, logger)
     guest, gpassword = await register_user(task, client, logger)
