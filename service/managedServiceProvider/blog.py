@@ -86,9 +86,9 @@ def insert_event(is_public, is_hidden, is_private, title, body, postkey):
         try:
             db = get_db()
             db.execute(
-                'INSERT INTO post (title, body, author_id, key, is_private, is_hidden)'
+                'INSERT INTO post (title, body, author_id, is_private, is_hidden)'
                 ' VALUES (?, ?, ?, ?, ?)',
-                (title, body, g.user['id'], postkey, is_private, is_hidden)
+                (title, body, g.user['id'], is_private, is_hidden)
             )
             db.commit()
         except:
@@ -111,7 +111,7 @@ def insert_event(is_public, is_hidden, is_private, title, body, postkey):
             db = get_db()
             db.execute(
                 'INSERT INTO post (title, body, author_id, key, is_private, is_hidden)'
-                ' VALUES (?, ?, ?, ?, ?)',
+                ' VALUES (?, ?, ?, ?, ?, ?)',
                 (title, body, g.user['id'], postkey, is_private, is_hidden)
             )
             db.commit()
@@ -257,15 +257,18 @@ def update(id):
         if error is not None:
             flash(error)
         else:
-
-            #elaborate what happens if we duplicate a title here --> database error?
-            db = get_db()
-            db.execute(
-                'UPDATE post SET title = ?, body = ?, is_private = ?, is_hidden = ?'
-                ' WHERE id = ?',
-                (title, body, is_private, is_hidden, id)
-            )
-            db.commit()
+            try:
+                db = get_db()
+                db.execute(
+                    'UPDATE post SET title = ?, body = ?, is_private = ?, is_hidden = ?, key = ?'
+                    ' WHERE id = ?',
+                    (title, body, is_private, is_hidden, postkey, id)
+                )
+                db.commit()
+            except:
+                error = "The title already exists. Try a different one!"
+                flash(error)
+                return render_temlate('blog/update_nodel.html', post=post)
 
             if len(invited) != 0:
                 error = handle_invite(invited, title, error)
