@@ -177,9 +177,9 @@ async def putflag_zero(
     await logout_user(client, logger, author, authorcookie)
 
     await db.set("nec_info", (title, user_to_invite, upassword))
-    attackinfo = {"title": title}
-    return json.dumps(attackinfo)
-    #return str(title)
+#    attackinfo = {"title": title}
+#    return json.dumps(attackinfo)
+    return str(title)
 
 # Deposit a flag in a hidden user post.
 @checker.putflag(1)
@@ -206,9 +206,9 @@ async def putflag_one(
     await logout_user(client, logger, author, authorcookie)
 
     await db.set("nec_info", (title, user_to_invite, upassword, secret))
-    attackinfo = {"postid": postid}
-    return json.dumps(attackinfo)
-#    return str(postid)
+#    attackinfo = {"postid": postid}
+#    return json.dumps(attackinfo)
+    return str(postid)
 
 def getdata_from_accountinfo(response, client, logger, title):
     try:
@@ -373,9 +373,9 @@ async def exploit_zero(task: ExploitCheckerTaskMessage,
 
     if task.attack_info == "":
         raise InternalErrorException("Missing attack info for exploit")
-    attackinfo = json.loads(task.attack_info)
-    title = attackinfo['title']
-    #title = task.attack_info
+#    attackinfo = json.loads(task.attack_info)
+#    title = attackinfo['title']
+    title = task.attack_info
 
     username, password  = await register_user(task, client, logger)
     cookie = await login_user(task, client, logger, username, password)
@@ -420,9 +420,9 @@ async def exploit_one(task: ExploitCheckerTaskMessage,
     """
     if task.attack_info == "":
         raise InternalErrorException("Missing attack info for exploit")
-    attackinfo = json.loads(task.attack_info)
-    postid = attackinfo['postid']
-    #postid = task.attack_info
+#    attackinfo = json.loads(task.attack_info)
+#    postid = attackinfo['postid']
+    postid = task.attack_info
 
     inviter, ipassword  = await register_user(task, client, logger)
     guest, gpassword = await register_user(task, client, logger)
