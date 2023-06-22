@@ -41,22 +41,24 @@ def pages(limit=200):
         ).fetchall()
     return render_template('blog/index.html', posts=posts, limit=limit, offset=offset)
 
-def check_event_params(title, body, invited, secret_phrase):
+def check_event_params(title, body, invited, secret_phrase, ispublic):
     error = None
     inv_bool = True
     default_key = "Correct horse battery staple!"
     if not invited:
         inv_bool = False
     if not title or len(title) > 50:
-        error = "The title must neither be empty, nor exceed 50 characters."
+        return "The title must neither be empty, nor exceed 50 characters."
     elif not body or len(body) > 500:
-        error = "The events needs a concise description."
+        return "The events needs a concise description."
     elif inv_bool and (len(invited) < 3 or len(invited) > 15):
-        error = "The invited username is invalid."
+        return "The invited username is invalid."
     elif invited == g.user['username']:
-        error = "You cannot invite yourself to an event."
-    elif not secret_phrase or len(secret_phrase) < 20 or secret_phrase == default_key:
-        error = "A secret phrase is required. It has to be at least 20 characters long and must not be the default key!"
+        return "You cannot invite yourself to an event."
+
+    if not ispublic:
+        if not secret_phrase or len(secret_phrase) < 20 or secret_phrase == default_key:
+            return "A secret phrase is required. It has to be at least 20 characters long and must not be the default key!"
     return error
 
 
@@ -87,8 +89,8 @@ def insert_event(is_public, is_hidden, is_private, title, body, postkey):
         try:
             db = get_db()
             db.execute(
-                'INSERT INTO post (title, body, author_id, key, is_private, is_hidden)'
-                ' VALUES (?, ?, ?, ?, ?, ?)',
+                'INSERT INTO post (title, body, author_id, is_private, is_hidden)'
+                ' VALUES (?, ?, ?, ?, ?)',
                 (title, body, g.user['id'], is_private, is_hidden)
             )
             db.commit()
@@ -112,8 +114,8 @@ def insert_event(is_public, is_hidden, is_private, title, body, postkey):
             db = get_db()
             db.execute(
                 'INSERT INTO post (title, body, author_id, is_private, is_hidden)'
-                ' VALUES (?, ?, ?, ?, ?, ?)',
-                (title, body, g.user['id'], postkey, is_private, is_hidden)
+                ' VALUES (?, ?, ?, ?, ?)',
+                (title, body, g.user['id'], is_private, is_hidden)
             )
             db.commit()
         except:
@@ -173,21 +175,26 @@ def create():
         body = request.form['body']
         invited = request.form['inviteuser']
         postkey = request.form['secret phrase']
-        error = check_event_params(title, body, invited, postkey)
+
+        is_hidden = "FALSE"
+        if 'hidden' in request.form:
+            if request.form['hidden'] == "True":
+                is_hidden = "TRUE"
+
+        is_private = "FALSE"
+        if 'private' in request.form:
+            if request.form['private'] == "True":
+                is_private = "TRUE"
+
+        if is_private == "TRUE" or is_hidden == "TRUE":
+            error = check_event_params(title, body, invited, postkey, False)
+        else:
+            error = check_event_params(title, body, invited, postkey, True)
 
         if error is not None:
             flash(error)
+
         else:
-            is_hidden = "FALSE"
-            if 'hidden' in request.form:
-                if request.form['hidden'] == "True":
-                    is_hidden = "TRUE"
-
-            is_private = "FALSE"
-            if 'private' in request.form:
-                if request.form['private'] == "True":
-                    is_private = "TRUE"
-
             if is_hidden == "TRUE":
                 error = insert_event("FALSE", is_hidden, is_private, title, body, postkey)
             elif is_private == "TRUE":
@@ -234,20 +241,22 @@ def get_post(id, check_author=True):
         abort(403)
     return post
 
-def check_update_params(body, invited, postkey):
+def check_update_params(body, invited, postkey, ispublic):
     error = None
     inv_bool = True
     default_key = "Correct horse battery staple!"
     if not invited:
         inv_bool = False
     elif not body or len(body) > 500:
-        error = "The events needs a concise description."
+        return "The events needs a concise description."
     elif inv_bool and (len(invited) < 3 or len(invited) > 15):
-        error = "The invited username is invalid."
+        return "The invited username is invalid."
     elif invited == g.user['username']:
-        error = "You cannot invite yourself to an event."
-    elif postkey == default_key or (len(postkey) > 0 and len(postkey) < 20):
-        error = "The new secret phrase must have at least 20 characters and must not match the default key."
+        return "You cannot invite yourself to an event."
+
+    if not ispublic:
+        if postkey == default_key or (len(postkey) > 0 and len(postkey) < 20):
+            return "The new secret phrase must have at least 20 characters and must not match the default key."
     return error
 
 @bp.route('/<int:id>/update', methods=('GET', 'POST'))
@@ -260,10 +269,6 @@ def update(id):
         body = request.form['body']
         invited = request.form['inviteuser']
         postkey = request.form['secret phrase']
-        error = check_update_params(body, invited, postkey)
-        if error is not None:
-            flash(error)
-            return render_tempplate('blog/update_nodel.html', post=post)
 
         is_private = "FALSE"
         if 'private' in request.form:
@@ -274,6 +279,15 @@ def update(id):
         if 'hidden' in request.form:
             if request.form['hidden'] == "True":
                 is_hidden = "TRUE"
+
+        if is_private == "TRUE" or is_hidden == "TRUE":
+            error = check_update_params(body, invited, postkey, False)
+        else:
+            error = check_update_params(body, invited, postkey, True)
+
+        if error is not None:
+            flash(error)
+            return render_tempplate('blog/update_nodel.html', post=post)
 
         if len(postkey) == 0:
             try:
