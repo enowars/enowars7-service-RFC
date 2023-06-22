@@ -2,6 +2,25 @@
 
 {% block header %}
   <h1>{% block title %}Edit "{{ post['title'] }}"{% endblock %}</h1>
+
+<script>
+	function showKeyField() {
+	  // Get the checkbox
+	  var checkBoxPrivate = document.getElementById("private");
+	  var checkBoxHidden = document.getElementById("hidden");
+	  // Get the output text
+	  var secret = document.getElementById("secret");
+	
+	  // If the checkbox is checked, display the output text
+	  if (checkBoxPrivate.checked == true || checkBoxHidden.checked == true){
+	    secret.style.display = "block";
+	  } else {
+	    secret.style.display = "none";
+	  }
+	}
+</script>
+
+
 {% endblock %}
 
 {% block content %}
@@ -13,26 +32,32 @@
     <textarea name="body" id="body">{{ request.form['body'] or post['body'] }}</textarea>
     {%if post.is_private == "TRUE"%}
     <div>
-      <input type ="checkbox" id="private" name="private" value="True" checked> 
+      <input type ="checkbox" id="private" name="private" value="True"  onclick="showKeyField()" checked> 
       <label for="private">This event is currently private! Untick the box to make it public.</label>
     </div>
     {% else %}
     <div>
-      <input type ="checkbox" id="private" name="private" value="True"> 
+      <input type ="checkbox" id="private" name="private" value="True" onclick="showKeyField()"> 
       <label for="private">This event is currently public! Tick the box to make it private.</label>
     </div>
     {% endif%}
     {%if post.is_hidden == "TRUE"%}
     <div>
-      <input type ="checkbox" id="hidden" name="hidden" value="True" checked> 
+      <input type ="checkbox" id="hidden" name="hidden" value="True"  onclick="showKeyField()" checked> 
       <label for="hidden">This event is currently hidden! Untick the box to make it visible to other users.</label>
     </div>
     {% else %}
     <div>
-      <input type ="checkbox" id="hidden" name="hidden" value="True"> 
+      <input type ="checkbox" id="hidden" name="hidden" value="True" onclick="showKeyField()">  
       <label for="hidden">This event is currently visible on the index! Tick the box to hide it.</label>
     </div>
     {% endif%}
+
+    <div id="secret" style="display:none">
+      <p> If you wish to update your secret phrase, enter it below! </p>
+      <input type="text" name="secret phrase" id="secret phrase">
+    </div>
+
     <div>
       <label for="inviteuser">Do you want to invite other people to this event?</label>
       <input name="inviteuser" id="inviteuser" minlength="3" maxlength="15">

@@ -55,8 +55,8 @@ def check_event_params(title, body, invited, secret_phrase):
         error = "The invited username is invalid."
     elif invited == g.user['username']:
         error = "You cannot invite yourself to an event."
-    elif not secret_phrase or len(secret_phrase) < 20 or secret_phrase == deafult_key:
-        error = "A secret phrase is required, has to be at least 20 characters long and must not be the default key!"
+    elif not secret_phrase or len(secret_phrase) < 20 or secret_phrase == default_key:
+        error = "A secret phrase is required. It has to be at least 20 characters long and must not be the default key!"
     return error
 
 
@@ -234,6 +234,22 @@ def get_post(id, check_author=True):
         abort(403)
     return post
 
+def check_update_params(body, invited, postkey):
+    error = None
+    inv_bool = True
+    default_key = "Correct horse battery staple!"
+    if not invited:
+        inv_bool = False
+    elif not body or len(body) > 500:
+        error = "The events needs a concise description."
+    elif inv_bool and (len(invited) < 3 or len(invited) > 15):
+        error = "The invited username is invalid."
+    elif invited == g.user['username']:
+        error = "You cannot invite yourself to an event."
+    elif postkey == default_key or (len(postkey) > 0 and len(postkey) < 20):
+        error = "The new secret phrase must have at least 20 characters and must not match the default key."
+    return error
+
 @bp.route('/<int:id>/update', methods=('GET', 'POST'))
 @login_required
 def update(id):
@@ -244,7 +260,10 @@ def update(id):
         body = request.form['body']
         invited = request.form['inviteuser']
         postkey = request.form['secret phrase']
-        error = check_event_params(title, body, invited, postkey)
+        error = check_update_params(body, invited, postkey)
+        if error is not None:
+            flash(error)
+            return render_tempplate('blog/update_nodel.html', post=post)
 
         is_private = "FALSE"
         if 'private' in request.form:
@@ -256,31 +275,41 @@ def update(id):
             if request.form['hidden'] == "True":
                 is_hidden = "TRUE"
 
-        if error is not None:
-            flash(error)
+        if len(postkey) == 0:
+            try:
+                db = get_db()
+                db.execute(
+                    'UPDATE post SET body = ?, is_private = ?, is_hidden = ?'
+                    ' WHERE id = ?',
+                    (body, is_private, is_hidden, id)
+                )
+                db.commit()
+            except:
+                error = "Oops, something went wrong!"
+                flash(error)
+                return render_template('blog/update_nodel.html', post=post)
         else:
             try:
                 db = get_db()
                 db.execute(
-                    'UPDATE post SET title = ?, body = ?, is_private = ?, is_hidden = ?, key = ?'
+                    'UPDATE post SET body = ?, is_private = ?, is_hidden = ?, key = ?'
                     ' WHERE id = ?',
-                    (title, body, is_private, is_hidden, postkey, id)
+                    (body, is_private, is_hidden, postkey, id)
                 )
                 db.commit()
             except:
-                error = "The title already exists. Try a different one!"
+                error = "Oops, something went wrong!"
                 flash(error)
-                return render_temlate('blog/update_nodel.html', post=post)
+                return render_template('blog/update_nodel.html', post=post)
 
-            if len(invited) != 0:
-                error = handle_invite(invited, title, error)
-            if error is not None:
-                flash(error)
-                return redirect(url_for('blog.update', id=id))
-            else:
-                return redirect(url_for('auth.accessblogpost', id=id))
+        if len(invited) != 0:
+            error = handle_invite(invited, title, error)
 
-        return redirect(url_for('blog.index'))
+        if error is not None:
+            flash(error)
+            return redirect(url_for('blog.update', id=id))
+        else:
+            return redirect(url_for('auth.accessblogpost', id=id))
 
     return render_template('blog/update_nodel.html', post=post)
 

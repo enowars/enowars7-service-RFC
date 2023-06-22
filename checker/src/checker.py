@@ -89,8 +89,12 @@ class Totp_Client:
     def calculate_current_timestep_count(self):
         dt = datetime.datetime.now(timezone.utc)
         time_diff = int(dt.timestamp()) - int(self.init_time) # floor the diff or fllor individually?
-        steps = int(time_diff/self.timestep)
-        self.timestep_counter = steps
+
+        if time_diff < 0:
+            self.timestep_counter = 0
+        else:
+            steps = int(time_diff/self.timestep)
+            self.timestep_counter = steps
         return
 
 
@@ -173,9 +177,9 @@ async def putflag_zero(
     await logout_user(client, logger, author, authorcookie)
 
     await db.set("nec_info", (title, user_to_invite, upassword))
-#    attackinfo = {"title": title}
-#    return json.dumps(attackinfo)
-    return str(title)
+    attackinfo = {"title": title}
+    return json.dumps(attackinfo)
+    #return str(title)
 
 # Deposit a flag in a hidden user post.
 @checker.putflag(1)
@@ -202,9 +206,9 @@ async def putflag_one(
     await logout_user(client, logger, author, authorcookie)
 
     await db.set("nec_info", (title, user_to_invite, upassword, secret))
-#    attackinfo = {"postid": postid}
-#    return json.dumps(attackinfo)
-    return str(postid)
+    attackinfo = {"postid": postid}
+    return json.dumps(attackinfo)
+#    return str(postid)
 
 def getdata_from_accountinfo(response, client, logger, title):
     try:
@@ -366,20 +370,12 @@ async def exploit_zero(task: ExploitCheckerTaskMessage,
                        client: AsyncClient,
                        logger: LoggerAdapter
                        ) -> Optional[str]:
-    """
-    TODO:
-        - register a new user
-        - login as the new user with valid credentials and totp
-        - access the private event by
-            - reading the creation time and creating a timestamp from it
-            - generating the secret key
-            - calculating the totp.
-    """
+
     if task.attack_info == "":
         raise InternalErrorException("Missing attack info for exploit")
-    #attackinfo = json.loads(task.attack_info)
-    #title = attackinfo['title']
-    title = task.attack_info
+    attackinfo = json.loads(task.attack_info)
+    title = attackinfo['title']
+    #title = task.attack_info
 
     username, password  = await register_user(task, client, logger)
     cookie = await login_user(task, client, logger, username, password)
@@ -424,9 +420,9 @@ async def exploit_one(task: ExploitCheckerTaskMessage,
     """
     if task.attack_info == "":
         raise InternalErrorException("Missing attack info for exploit")
-    #attackinfo = json.loads(task.attack_info)
-    #postid = attackinfo['postid']
-    postid = task.attack_info
+    attackinfo = json.loads(task.attack_info)
+    postid = attackinfo['postid']
+    #postid = task.attack_info
 
     inviter, ipassword  = await register_user(task, client, logger)
     guest, gpassword = await register_user(task, client, logger)
