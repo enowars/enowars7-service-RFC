@@ -287,7 +287,7 @@ def update(id):
 
         if error is not None:
             flash(error)
-            return render_tempplate('blog/update_nodel.html', post=post)
+            return render_template('blog/update_nodel.html', post=post)
 
         if len(postkey) == 0:
             try:
