@@ -6,6 +6,6 @@
 flask --app managedServiceProvider init-db
 
 chmod 777 /service/instance/msp.sqlite
-source /service/cleanup.sh
+source /service/scripts/cleanup.sh
 
-gunicorn -c "gunicorn.conf.py" "managedServiceProvider:create_app()"
+gunicorn -c "config/gunicorn.conf.py" "managedServiceProvider:create_app()"
