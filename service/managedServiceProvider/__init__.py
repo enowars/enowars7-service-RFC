@@ -7,11 +7,10 @@ def create_app(test_config=None):
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(
-        SECRET_KEY='dev', #CTF-NOTE not part of intended vulns, will be fixed   #secrets.token_hex(20),
+        SECRET_KEY = secrets.token_hex(),
         DATABASE=os.path.join(app.instance_path, 'msp.sqlite'),
     )
 
-    # TODO; use for deployment behind nginx as proxy
     app.wsgi_app = ProxyFix(
         app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
     )

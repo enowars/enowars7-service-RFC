@@ -24,7 +24,6 @@ def login_required(view):
 
     return wrapped_view
 
-
 def check_registration_data(username, password, rpassword):
     error = None
     if not username or len(username) < 3:
@@ -63,20 +62,20 @@ def register():
     return render_template('auth/register.html')
 
 # CURRENTLY NOT IN USE
-@bp.route('/completeRegistration/<dyn_url>', methods=('GET', 'POST'))
-def totp_registration(dyn_url):
-    #assume the dyn url contains username and init_time
-    #This is okay for the prototype but not for the final service
-    if request.method == 'POST':
-        return redirect(url_for("auth.login"))
-
-    init_time = dyn_url.split('?')[0]
-    username = dyn_url.split('?')[1]
-    g.user = get_db().execute(
-        'SELECT * FROM user WHERE username = ?', (username,)
-    ).fetchone()
-
-    return render_template("auth/totp_registration.html")
+#@bp.route('/completeRegistration/<dyn_url>', methods=('GET', 'POST'))
+#def totp_registration(dyn_url):
+#    #assume the dyn url contains username and init_time
+#    #This is okay for the prototype but not for the final service
+#    if request.method == 'POST':
+#        return redirect(url_for("auth.login"))
+#
+#    init_time = dyn_url.split('?')[0]
+#    username = dyn_url.split('?')[1]
+#    g.user = get_db().execute(
+#        'SELECT * FROM user WHERE username = ?', (username,)
+#    ).fetchone()
+#
+#    return render_template("auth/totp_registration.html")
 
 
 @bp.route('/login', methods=('GET', 'POST'))
@@ -105,26 +104,26 @@ def login():
     return render_template('auth/login.html')
 
 # CURRENTLY NOT IN USE
-@bp.route('/login/<dyn_url>', methods=('GET', 'POST'))
-def totp_login(dyn_url):
-    if request.method == 'POST':
-        db = get_db()
-        username = dyn_url.split('?')[1]
-        usercode = int(request.form['code'])
-        query = db.execute(
-            'SELECT init_time, shared_secret FROM user WHERE username = ?', (username,)
-        ).fetchone()
-
-        totp = totp_server.Totp(init_time=query['init_time'])
-        result = totp.validate_otp(int(usercode), totp.generate_shared_secret(str(query['shared_secret'])))
-        error = None
-        if not result:
-            error = "Wrong passcode. Try again!"
-        else:
-            return redirect(url_for("index"))
-
-        flash(error)
-    return render_template('auth/test_totp_login.html')
+#@bp.route('/login/<dyn_url>', methods=('GET', 'POST'))
+#def totp_login(dyn_url):
+#    if request.method == 'POST':
+#        db = get_db()
+#        username = dyn_url.split('?')[1]
+#        usercode = int(request.form['code'])
+#        query = db.execute(
+#            'SELECT init_time, shared_secret FROM user WHERE username = ?', (username,)
+#        ).fetchone()
+#
+#        totp = totp_server.Totp(init_time=query['init_time'])
+#        result = totp.validate_otp(int(usercode), totp.generate_shared_secret(str(query['shared_secret'])))
+#        error = None
+#        if not result:
+#            error = "Wrong passcode. Try again!"
+#        else:
+#            return redirect(url_for("index"))
+#
+#        flash(error)
+#    return render_template('auth/test_totp_login.html')
 
 def convert_str_to_unixtimestamp(timestr: str):
     date, timec = timestr.split(' ', 1)
@@ -132,7 +131,6 @@ def convert_str_to_unixtimestamp(timestr: str):
     timec = timec.split('.', 1)[0]
     timecomp=timec.split(':')
     dto = datetime.datetime(int(datecomp[0]), int(datecomp[1]), int(datecomp[2]), int(timecomp[0]), int(timecomp[1]), int(timecomp[2]), tzinfo=timezone.utc)
-    print("returning")
     return dto.timestamp()
 
 @bp.route('/accessblogpost/<int:id>', methods=('GET', 'POST'))
@@ -140,7 +138,6 @@ def convert_str_to_unixtimestamp(timestr: str):
 def accessblogpost(id):
 
     if request.method == 'POST':
-        print("processing post...")
         db = get_db()
         try:
             query = db.execute(
@@ -150,9 +147,7 @@ def accessblogpost(id):
             abort(403, 'Forbidden')
 
         usercode = request.form['code']
-        print("usercode: ", usercode)
         blogpost_creation_time = int(convert_str_to_unixtimestamp(str(query['created'])))
-        print("blogpost creation time: ", blogpost_creation_time)
         totp = totp_server.Totp(init_time=blogpost_creation_time)
         result = totp.validate_otp(int(usercode), totp.generate_shared_secret(query['key']))
 
@@ -248,6 +243,7 @@ def load_logged_in_user():
         ).fetchone()
 
 @bp.route('/logout')
+@login_required
 def logout():
     session.clear()
     return redirect(url_for('index'))

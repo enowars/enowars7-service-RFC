@@ -4,7 +4,7 @@ RUN apt update && apt install -y nginx sqlite3
 COPY ./config/nginx.conf /etc/nginx/nginx.conf
 
 WORKDIR /tmp 
-COPY ./requirements.txt .
+COPY ./config/requirements.txt .
 RUN python3 -m pip install -r requirements.txt
 
 WORKDIR /service
