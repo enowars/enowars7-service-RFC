@@ -98,7 +98,7 @@ class Totp_Client:
         return
 
 
-async def register_user(task, client: AsyncClient, logger):
+async def register_user(client: AsyncClient, logger):
     username = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(10))
     password = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
     logger.debug(f"New user registration. Username: {username}, Password: {password}")
@@ -108,7 +108,7 @@ async def register_user(task, client: AsyncClient, logger):
     assert_equals(r.status_code, 302, "Registration error in register user function.")
     return username, password
 
-async def login_user(task, client, logger, username, password):
+async def login_user(client, logger, username, password):
     logger.debug(f"Logging in user: {username}, with password: {password}")
     formdata = {"username": username, "password": password}
     r = await client.post("auth/login", data=formdata)
@@ -169,9 +169,9 @@ async def putflag_zero(
         - logout
     """
     flag = task.flag
-    author, apassword = await register_user(task, client, logger)
-    authorcookie = await login_user(task, client, logger, author, apassword)
-    user_to_invite, upassword = await register_user(task, client, logger)
+    author, apassword = await register_user(client, logger)
+    authorcookie = await login_user(client, logger, author, apassword)
+    user_to_invite, upassword = await register_user(client, logger)
 
     title, secret = await create_blogpost(client, logger, authorcookie, flag, is_private=True, is_hidden=False, inviteduser=user_to_invite, title="")
     await logout_user(client, logger, author, authorcookie)
@@ -198,9 +198,9 @@ async def putflag_one(
         - logout
     """
     flag = task.flag
-    author, apassword = await register_user(task, client, logger)
-    authorcookie = await login_user(task, client, logger, author, apassword)
-    user_to_invite, upassword = await register_user(task, client, logger)
+    author, apassword = await register_user(client, logger)
+    authorcookie = await login_user(client, logger, author, apassword)
+    user_to_invite, upassword = await register_user(client, logger)
 
     title, secret, postid= await create_blogpost(client, logger, authorcookie, flag, is_private=False, is_hidden=True, inviteduser=user_to_invite, title="")
     await logout_user(client, logger, author, authorcookie)
@@ -209,6 +209,31 @@ async def putflag_one(
 #    attackinfo = {"postid": postid}
 #    return json.dumps(attackinfo)
     return str(postid)
+
+@checker.putnoise(0)
+async def putnoise_register(
+        db: ChainDB,
+        client: AsyncClient,
+        logger: LoggerAdapter
+) -> None:
+    username, password = await register_user(client, logger)
+    await db.set("reg_info", (username, password))
+
+@checker.getnoise(0)
+async def getnoise_login_logout(
+        db: ChainDB,
+        client: AsyncClient,
+        logger: LoggerAdapter
+) -> None:
+
+    try:
+        username, password = await db.get("reg_info")
+    except KeyError:
+        raise MumbleException("Missing database entry from putflag operation.")
+
+    cookie = await login_user(client, logger, username, password)
+    r = await client.get('/auth/accountInfo', cookies=cookie)
+    assert_equals(r.status_code, 200, "User unable to access acount Information")
 
 def getdata_from_accountinfo(response, client, logger, title):
     try:
@@ -263,7 +288,7 @@ async def getflag_zero(
         #is mumble here correct or will lead to deduction in points?
         raise MumbleException("Missing database entry from putflag operation.")
 
-    cookie = await login_user(task, client, logger, username=userdata[1], password=userdata[2])
+    cookie = await login_user(client, logger, username=userdata[1], password=userdata[2])
     r = await client.get('/auth/accountInfo', cookies=cookie)
     logger.debug(f"accessing accountinfo: {r.text}")
     date, postkey, posturl = getdata_from_accountinfo(r, client, logger, userdata[0])
@@ -296,7 +321,7 @@ async def getflag_one(
         #is mumble here correct or will lead to deduction in points?
         raise MumbleException("Missing database entry from putflag operation.")
 
-    cookie = await login_user(task, client, logger, username=userdata[1], password=userdata[2])
+    cookie = await login_user(client, logger, username=userdata[1], password=userdata[2])
     r = await client.get('/auth/accountInfo', cookies=cookie)
     logger.debug(f"accessing accountinfo: {r.text}")
     date, postkey, posturl = getdata_from_accountinfo(r, client, logger, userdata[0])
@@ -377,8 +402,8 @@ async def exploit_zero(task: ExploitCheckerTaskMessage,
 #    title = attackinfo['title']
     title = task.attack_info
 
-    username, password  = await register_user(task, client, logger)
-    cookie = await login_user(task, client, logger, username, password)
+    username, password  = await register_user(client, logger)
+    cookie = await login_user(client, logger, username, password)
     r = await client.get("/", cookies=cookie)
 
     # use the title to find relevant info
@@ -424,10 +449,10 @@ async def exploit_one(task: ExploitCheckerTaskMessage,
 #    postid = attackinfo['postid']
     postid = task.attack_info
 
-    inviter, ipassword  = await register_user(task, client, logger)
-    guest, gpassword = await register_user(task, client, logger)
+    inviter, ipassword  = await register_user(client, logger)
+    guest, gpassword = await register_user(client, logger)
 
-    cookie = await login_user(task, client, logger, inviter, ipassword)
+    cookie = await login_user(client, logger, inviter, ipassword)
     r = await client.get("/auth/accessblogpost/"+str(postid), cookies=cookie)
     html = BeautifulSoup(r.text, "html.parser")
     content = html.find('section', attrs={"class":"content"})
@@ -437,7 +462,7 @@ async def exploit_one(task: ExploitCheckerTaskMessage,
     title, secret = await create_blogpost(client, logger, cookie, "some text", is_private=True, is_hidden=False, inviteduser=guest, title=title, isexploit=True)
     await logout_user(client, logger, inviter, cookie)
 
-    guestcookie = await login_user(task, client, logger, guest, gpassword)
+    guestcookie = await login_user(client, logger, guest, gpassword)
     r = await client.get('/auth/accountInfo', cookies=guestcookie)
     date, postkey, posturl = getdata_from_accountinfo(r, client, logger, title)
 
