@@ -136,19 +136,6 @@ def update_user_post_count(query):
     except:
         return "Could not update number of posts for user"
 
-# FIX FIX FIX FIX
-#def update_postkey(postkey, title):
-#    try:
-#        db = get_db()
-#        db.execute(
-#            'UPDATE post SET key = ? WHERE title = ?',
-#            (postkey, title)
-#        )
-#        db.commit()
-#    except:
-#        return "Failed to update keys"
-#
-#    return None
 
 @bp.route('/create', methods=('GET', 'POST'))
 @login_required
@@ -204,13 +191,6 @@ def create():
 
             if error is None:
                 error = update_user_post_count(query)
-
-            ### FIX FIX FIX FIX
-            #if error is None:
-            #    error = update_postkey(postkey, title)
-
-            #if error is not None:
-            #    render_template('blog/create.html')
 
             if len(invited) != 0:
                 error = handle_invite(invited, title, error)
