@@ -10,3 +10,4 @@ services:
       - ./instance/:/service/instance/
     ports:
       - 5000:80
+    restart: unless-stopped
