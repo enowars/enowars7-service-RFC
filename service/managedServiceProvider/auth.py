@@ -61,23 +61,6 @@ def register():
 
     return render_template('auth/register.html')
 
-# CURRENTLY NOT IN USE
-#@bp.route('/completeRegistration/<dyn_url>', methods=('GET', 'POST'))
-#def totp_registration(dyn_url):
-#    #assume the dyn url contains username and init_time
-#    #This is okay for the prototype but not for the final service
-#    if request.method == 'POST':
-#        return redirect(url_for("auth.login"))
-#
-#    init_time = dyn_url.split('?')[0]
-#    username = dyn_url.split('?')[1]
-#    g.user = get_db().execute(
-#        'SELECT * FROM user WHERE username = ?', (username,)
-#    ).fetchone()
-#
-#    return render_template("auth/totp_registration.html")
-
-
 @bp.route('/login', methods=('GET', 'POST'))
 def login():
     if request.method == 'POST':
@@ -102,28 +85,6 @@ def login():
         flash(error)
 
     return render_template('auth/login.html')
-
-# CURRENTLY NOT IN USE
-#@bp.route('/login/<dyn_url>', methods=('GET', 'POST'))
-#def totp_login(dyn_url):
-#    if request.method == 'POST':
-#        db = get_db()
-#        username = dyn_url.split('?')[1]
-#        usercode = int(request.form['code'])
-#        query = db.execute(
-#            'SELECT init_time, shared_secret FROM user WHERE username = ?', (username,)
-#        ).fetchone()
-#
-#        totp = totp_server.Totp(init_time=query['init_time'])
-#        result = totp.validate_otp(int(usercode), totp.generate_shared_secret(str(query['shared_secret'])))
-#        error = None
-#        if not result:
-#            error = "Wrong passcode. Try again!"
-#        else:
-#            return redirect(url_for("index"))
-#
-#        flash(error)
-#    return render_template('auth/test_totp_login.html')
 
 def convert_str_to_unixtimestamp(timestr: str):
     date, timec = timestr.split(' ', 1)
@@ -193,15 +154,29 @@ def account_info():
     db = get_db()
     error = None
     try:
+        #THIS query currently fetches ALL posts
         posts = db.execute(
             'SELECT p.id, title, created, author_id, is_hidden, key, username'
             ' FROM post p JOIN user u ON p.author_id = u.id'
             ' ORDER BY created DESC'
         ).fetchall()
 
+       # posts = db.execute(
+       #     'SELECT p.id, title, created, author_id, is_hidden, key, username'
+       #     ' FROM post p JOIN user u ON p.author_id = ?'
+       #     ' ORDER BY created DESC',
+       #     (g.user['id'],)
+
+       # invitations = db.execute(
+       #     'SELECT i.post_id, i.user_id, p.id, title, key, created'
+       #     ' FROM post p JOIN invitation i ON p.id = i.post_id'
+       #     ' WHERE i.user_id = ?',
+       #     (g.user['id'],)
+       # ).fetchall() 
+
         invitations = db.execute(
             'SELECT i.post_id, i.user_id, p.id, title, key, created'
-            ' FROM post p JOIN invitation i ON p.id = i.post_id',
+            ' FROM post p JOIN invitation i ON p.id = i.post_id'
         ).fetchall()
     except:
         error = "An error occured when fetching post information."
