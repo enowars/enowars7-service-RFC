@@ -1,5 +1,5 @@
 # enowars7-service-RFC
-Service and checker repository for the upcoming enowars7 attack-defense CTF competition
+Service and checker repository for the upcoming enowars7 attack-defense CTF competition.
 
 ## RFC-technicalities in a nutshell
 - Python based web service utilizing the flask framework
