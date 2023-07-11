@@ -15,7 +15,6 @@
     </form>
   
   {% for post in posts %}
-    {% if g.user['id'] == post['author_id'] %}
         <article class="post">
           <header>
             <div>
@@ -27,11 +26,9 @@
           <a class="action" href="{{ url_for('auth.accessblogpost', id=post['id']) }}">View this Event</a>
         </article>
         <hr>
-      {% endif %}
     {% endfor %}
 
     {% for invite in invitations %}
-      {% if invite['user_id'] == g.user['id'] %}
           <article class="post">
              <header>
                <div>
@@ -44,7 +41,6 @@
              <a class="action" href="{{ url_for('auth.accessblogpost', id=invite['post_id']) }}">View this Event</a>
           </article>
       <hr>
-    {% endif %}
   {% endfor %}
 
 {% endblock %}

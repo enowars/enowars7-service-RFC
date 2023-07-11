@@ -153,29 +153,31 @@ def account_info():
     error = None
     try:
         #THIS query currently fetches ALL posts
+        #posts = db.execute(
+        #    'SELECT p.id, title, created, author_id, is_hidden, key, username'
+        #    ' FROM post p JOIN user u ON p.author_id = u.id'
+        #    ' ORDER BY created DESC'
+        #).fetchall()
+
         posts = db.execute(
             'SELECT p.id, title, created, author_id, is_hidden, key, username'
             ' FROM post p JOIN user u ON p.author_id = u.id'
-            ' ORDER BY created DESC'
+            ' WHERE u.id = ?'
+            ' ORDER BY created DESC',
+            (g.user['id'],)
         ).fetchall()
-
-       # posts = db.execute(
-       #     'SELECT p.id, title, created, author_id, is_hidden, key, username'
-       #     ' FROM post p JOIN user u ON p.author_id = ?'
-       #     ' ORDER BY created DESC',
-       #     (g.user['id'],)
-
-       # invitations = db.execute(
-       #     'SELECT i.post_id, i.user_id, p.id, title, key, created'
-       #     ' FROM post p JOIN invitation i ON p.id = i.post_id'
-       #     ' WHERE i.user_id = ?',
-       #     (g.user['id'],)
-       # ).fetchall() 
 
         invitations = db.execute(
             'SELECT i.post_id, i.user_id, p.id, title, key, created'
             ' FROM post p JOIN invitation i ON p.id = i.post_id'
+            ' WHERE i.user_id = ?',
+            (g.user['id'],)
         ).fetchall()
+
+        #invitations = db.execute(
+        #    'SELECT i.post_id, i.user_id, p.id, title, key, created'
+        #    ' FROM post p JOIN invitation i ON p.id = i.post_id'
+        #).fetchall()
     except:
         error = "An error occured when fetching post information."
         flash(error)
