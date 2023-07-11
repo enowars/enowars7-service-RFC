@@ -43,12 +43,10 @@ def register():
 
         db = get_db()
         if error is None:
-            dt = datetime.datetime.now(timezone.utc)
-            init_time = int(dt.timestamp())
             try:
                 db.execute(
-                    "INSERT INTO user (username, password, init_time) VALUES (?, ?, ?)",
-                    (username, generate_password_hash(password), init_time),
+                    "INSERT INTO user (username, password) VALUES (?, ?)",
+                    (username, generate_password_hash(password),),
                 )
                 db.commit()
             except db.IntegrityError:
