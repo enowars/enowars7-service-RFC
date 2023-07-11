@@ -11,7 +11,8 @@ def get_db():
         )
         g.db.row_factory = sqlite3.Row
         g.db.execute('pragma journal_mode=wal')
-        g.db.execute('pragma temp_storage = memory')
+        g.db.execute('pragma temp_storage=memory')
+        g.db.execute('pragma synchronous=normal')
 
     return g.db
 

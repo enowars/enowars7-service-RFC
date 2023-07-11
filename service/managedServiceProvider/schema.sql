@@ -3,8 +3,6 @@ CREATE TABLE IF NOT EXISTS user (
   username TEXT UNIQUE NOT NULL,
   password TEXT NOT NULL,
   num_posts INTEGER DEFAULT 0,
-  shared_secret TEXT NOT NULL DEFAULT "Hier könnte Ihr Geheimnis stehen!",
-  init_time INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS post (

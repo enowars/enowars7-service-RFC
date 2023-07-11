@@ -12,7 +12,7 @@ bp = Blueprint('blog', __name__)
 
 @bp.route('/', methods=('GET', 'POST'))
 def index():
-    limit=200
+    limit=100
     offset=0
     db = get_db()
     posts = db.execute(
@@ -25,10 +25,10 @@ def index():
     return render_template('blog/index.html', posts=posts, limit=limit, offset=offset)
 
 @bp.route('/page/<int:limit>', methods=('GET', 'POST'))
-def pages(limit=200):
+def pages(limit=100):
     if limit > 9223372036854775807 or limit < 0:
         flash("No further posts to show!")
-        limit = 200
+        limit = 100
 
     offset=0
     db = get_db()
