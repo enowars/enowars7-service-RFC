@@ -1,10 +1,7 @@
-import json
-import os
 import secrets
 import string
 import hashlib
 import hmac
-from logging import LoggerAdapter
 from typing import List, Optional, Tuple
 from bs4 import BeautifulSoup
 from datetime import timezone
@@ -177,8 +174,6 @@ async def putflag_zero(
     await logout_user(client, logger, author, authorcookie)
 
     await db.set("nec_info", (title, user_to_invite, upassword))
-#    attackinfo = {"title": title}
-#    return json.dumps(attackinfo)
     return str(title)
 
 # Deposit a flag in a hidden user post.
@@ -206,8 +201,6 @@ async def putflag_one(
     await logout_user(client, logger, author, authorcookie)
 
     await db.set("nec_info", (title, user_to_invite, upassword, secret))
-#    attackinfo = {"postid": postid}
-#    return json.dumps(attackinfo)
     return str(postid)
 
 @checker.putnoise(0)
@@ -356,8 +349,6 @@ def finddata_for_exploit(r, username, title):
                 spliddy = el_div.string.split(' ')
                 time = spliddy[-2:]
 
-                #el_a = article.find('a', attrs={"class":"action"})
-                #post_id = el_a['href'].split('/')[-1]
                 el_a = article.find('a', attrs={"class":"action"})
                 posturl = el_a['href']
                 return time, posturl
@@ -398,8 +389,6 @@ async def exploit_zero(task: ExploitCheckerTaskMessage,
 
     if task.attack_info == "":
         raise InternalErrorException("Missing attack info for exploit")
-#    attackinfo = json.loads(task.attack_info)
-#    title = attackinfo['title']
     title = task.attack_info
 
     username, password  = await register_user(client, logger)
@@ -445,8 +434,6 @@ async def exploit_one(task: ExploitCheckerTaskMessage,
     """
     if task.attack_info == "":
         raise InternalErrorException("Missing attack info for exploit")
-#    attackinfo = json.loads(task.attack_info)
-#    postid = attackinfo['postid']
     postid = task.attack_info
 
     inviter, ipassword  = await register_user(client, logger)

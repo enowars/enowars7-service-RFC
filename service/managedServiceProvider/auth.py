@@ -1,7 +1,5 @@
 import functools
 import string
-import random
-import time
 from datetime import timezone
 import datetime
 from . import totp_server
