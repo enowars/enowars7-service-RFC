@@ -47,7 +47,7 @@ def register():
             init_time = int(dt.timestamp())
             try:
                 db.execute(
-                    "INSERT INTO user (username, password) VALUES (?, ?, ?)",
+                    "INSERT INTO user (username, password, init_time) VALUES (?, ?, ?)",
                     (username, generate_password_hash(password), init_time),
                 )
                 db.commit()
