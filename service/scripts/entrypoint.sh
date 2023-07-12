@@ -1,7 +1,7 @@
 #!/bin/bash
 
-/usr/bin/nginx -c /etc/nginx/nginx.conf
-/etc/init.d/nginx start
+#/usr/bin/nginx -c /etc/nginx/nginx.conf
+#/etc/init.d/nginx start
 
 flask --app managedServiceProvider init-db
 

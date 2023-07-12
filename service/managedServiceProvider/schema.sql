@@ -27,3 +27,4 @@ CREATE TABLE IF NOT EXISTS invitation (
 
 CREATE INDEX post_created ON post(created);
 CREATE INDEX post_title ON post(title);
+CREATE INDEX user_username ON user(username);
