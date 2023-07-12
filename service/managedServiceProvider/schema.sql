@@ -25,3 +25,5 @@ CREATE TABLE IF NOT EXISTS invitation (
   FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE
 );
 
+CREATE INDEX post_created ON post(created);
+CREATE INDEX post_title ON post(title);
