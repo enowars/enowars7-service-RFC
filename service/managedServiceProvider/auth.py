@@ -41,14 +41,15 @@ def register():
         rpassword = request.form['rpassword']
         error = check_registration_data(username, password, rpassword)
 
-        db = get_db()
         if error is None:
             dt = datetime.datetime.now(timezone.utc)
             init_time = int(dt.timestamp())
             try:
+                db = get_db()
+#                password_hash = generate_password_hash(password)
                 db.execute(
                     "INSERT INTO user (username, password, init_time) VALUES (?, ?, ?)",
-                    (username, generate_password_hash(password), init_time),
+                    (username, password, init_time),
                 )
                 db.commit()
             except db.IntegrityError:
@@ -72,7 +73,8 @@ def login():
 
         if user is None:
             error = 'Incorrect username.'
-        elif not check_password_hash(user['password'], password):
+#        elif not check_password_hash(user['password'], password):
+        elif password != user['password']
             error = 'Incorrect password.'
 
         if error is None:
