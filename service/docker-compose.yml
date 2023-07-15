@@ -8,7 +8,6 @@ services:
       dockerfile: ./Dockerfile
     volumes:
       - ./instance/:/service/instance/
-        #      - ./profiles/:/service/profiles/
     ports:
       - 5000:80
     restart: unless-stopped
