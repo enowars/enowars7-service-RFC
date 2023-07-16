@@ -51,7 +51,7 @@ def check_event_params(title, body, invited, secret_phrase, ispublic):
         return "The title must neither be empty, nor exceed 50 characters."
     elif not body or len(body) > 500:
         return "The events needs a concise description."
-    elif inv_bool and (len(invited) < 3 or len(invited) > 15):
+    elif inv_bool and (len(invited) < 3 or len(invited) > 35):
         return "The invited username is invalid."
     elif invited == g.user['username']:
         return "You cannot invite yourself to an event."
