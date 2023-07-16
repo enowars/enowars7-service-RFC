@@ -128,7 +128,7 @@ async def create_blogpost(client, logger, cookie, flag, is_private, is_hidden, i
     body = flag
     if not title:
         #title = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
-       fake.text(max_nb_chars=35, ext_word_list=party_word_list)
+       title = fake.text(max_nb_chars=35, ext_word_list=party_word_list)
     formdata = {"title": title, "body": body, "inviteuser": inviteduser, "secret phrase": secret}
 
     if is_private:
