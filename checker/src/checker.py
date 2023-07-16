@@ -2,6 +2,7 @@ import secrets
 import string
 import hashlib
 import hmac
+import random
 from faker import Faker
 from typing import List, Optional, Tuple
 from bs4 import BeautifulSoup
@@ -107,7 +108,7 @@ async def register_user(client: AsyncClient, logger):
     fake = Faker()
     username = ""
     while not username or len(username) < 3 or len(username) > 35:
-        username = fake.first_name()
+        username = fake.first_name() + str(random.randint(0, 99))
     password = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
     logger.debug(f"New user registration. Username: {username}, Password: {password}")
 
