@@ -42,7 +42,7 @@ app = lambda: checker.app
 party_word_list = ['party', 'event', 'rave', 'disco', 'festival', 'loveparade', 'christopher-street-day', 'csd',
                    'great', 'huge', 'massive', 'fun', 'experience', 'parade', 'street', 'city', 'the best',
                    'social', 'gathering', 'celebrate', 'birthday', 'anniversary', 'club', 'fiesta', 'dance',
-                   'bash', 'fete', 'beach', 'reunion', 'after party', 'techno', 'house', 'tekktonik', 'classic'
+                   'bash', 'fete', 'beach', 'reunion', 'after party', 'techno', 'house', 'tekktonik', 'classic',
                    'pool party', 'surprise', 'underground', 'Birgit & Bier', 'Tresor', 'Berghain', 'East',
                    'Anomalie', 'Club-Ost', 'Panorama Bar', 'Sisyphos', 'KitKat', 'Carnival', 'Berlin']
 
