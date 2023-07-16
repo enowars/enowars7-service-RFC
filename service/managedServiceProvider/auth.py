@@ -24,9 +24,9 @@ def login_required(view):
 
 def check_registration_data(username, password, rpassword):
     error = None
-    if not username or len(username) < 3:
+    if not username or len(username) < 3 or len(username) > 35:
         error = 'Username is required and has to be at least 3 characters long.'
-    elif not password or len(password) < 5:
+    elif not password or len(password) < 5 or len(password) > 35:
         error = 'Password is required and has to be at least 5 characters long.'
     elif password != rpassword:
         error = 'Passwords do not match.'
