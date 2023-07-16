@@ -2,6 +2,7 @@ import secrets
 import string
 import hashlib
 import hmac
+from faker import Faker
 from typing import List, Optional, Tuple
 from bs4 import BeautifulSoup
 from datetime import timezone
@@ -37,6 +38,13 @@ app = lambda: checker.app
 """
 
 """
+
+party_word_list = ['party', 'event', 'rave', 'disco', 'festival', 'loveparade', 'christopher-street-day', 'csd',
+                   'great', 'huge', 'massive', 'fun', 'experience', 'parade', 'street', 'city', 'the best',
+                   'social', 'gathering', 'celebrate', 'birthday', 'anniversary', 'club', 'fiesta', 'dance',
+                   'bash', 'fete', 'beach', 'reunion', 'after party', 'techno', 'house', 'tekktonik', 'classic'
+                   'pool party', 'surprise', 'underground', 'Birgit & Bier', 'Tresor', 'Berghain', 'East',
+                   'Anomalie', 'Club-Ost', 'Panorama Bar', 'Sisyphos', 'KitKat', 'Carnival', 'Berlin']
 
 class Totp_Client:
     def __init__(self,
@@ -96,7 +104,8 @@ class Totp_Client:
 
 
 async def register_user(client: AsyncClient, logger):
-    username = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(10))
+    fake = Faker()
+    username = fake.first_name()#''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(10))
     password = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
     logger.debug(f"New user registration. Username: {username}, Password: {password}")
 
@@ -114,10 +123,12 @@ async def login_user(client, logger, username, password):
     return r.cookies
 
 async def create_blogpost(client, logger, cookie, flag, is_private, is_hidden, inviteduser="", title="", isexploit=False):
+    fake = Faker()
     secret = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
     body = flag
     if not title:
-        title = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
+        #title = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
+       fake.text(max_nb_chars=35, ext_word_list=party_word_list)
     formdata = {"title": title, "body": body, "inviteuser": inviteduser, "secret phrase": secret}
 
     if is_private:
