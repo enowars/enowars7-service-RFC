@@ -14,7 +14,7 @@ def create_app(test_config=None):
         output = f.readline()
     f.close()
     app.config.from_mapping(
-        SECRET_KEY = str(output).strip()
+        SECRET_KEY = str(output).strip(),
         DATABASE=os.path.join(app.instance_path, 'msp.sqlite'),
     )
 
