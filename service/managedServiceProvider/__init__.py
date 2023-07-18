@@ -10,7 +10,7 @@ def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
 
     keyfile = os.path.join(app.instance_path, 'secret.txt'),
-    with open(keyfile,'r') as f:
+    with open(keyfile[0],'r') as f:
         output = f.readline()
     f.close()
     app.config.from_mapping(
