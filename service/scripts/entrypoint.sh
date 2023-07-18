@@ -8,5 +8,10 @@ flask --app managedServiceProvider init-db
 chmod 777 /service/instance/msp.sqlite
 source /service/scripts/cleanup.sh
 
-#echo "$RANDOM+$RANDOM+$RANDOM" | shasum -a 256 | export FLASK_KEY=$(awk '{print $1}')
+if test -f "/service/instance/secret.txt"; then
+	:
+else
+	echo "$RANDOM+$RANDOM+$RANDOM" | shasum -a 256 | awk '{print $1}' > "/service/instance/secret.txt"
+fi
+
 gunicorn -c "config/gunicorn.conf.py" "managedServiceProvider:create_app()"
