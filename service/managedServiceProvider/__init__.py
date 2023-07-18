@@ -7,13 +7,14 @@ from flask import Flask
 
 def create_app(test_config=None):
     # create and configure the app
-    with open('/service/instance/secret.txt', 'r') as f:
+    app = Flask(__name__, instance_relative_config=True)
+
+    keyfile = os.path.join(app.instance_path, 'secret.txt'),
+    with open(keyfile,'r') as f:
         output = f.readline()
     f.close()
-
-    app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(
-        SECRET_KEY = '70ae4084dab46c696e9e3d749005970ae3e',
+        SECRET_KEY = str(output).strip()
         DATABASE=os.path.join(app.instance_path, 'msp.sqlite'),
     )
 
