@@ -100,8 +100,9 @@ class Totp_Client:
 async def register_user(client: AsyncClient, logger):
     fake = Faker()
     username = ""
-    while not username or len(username) < 3 or len(username) > 35:
-        username = fake.first_name() + str(random.randint(0, 99))
+    #while not username or len(username) < 3 or len(username) > 35:
+     #   username = fake.first_name() + str(random.randint(0, 99))
+    username = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(12))
     password = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
     logger.debug(f"New user registration. Username: {username}, Password: {password}")
 
@@ -130,8 +131,8 @@ async def create_blogpost(client, logger, cookie, flag, is_private, is_hidden, i
     secret = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
     body = flag
     if not title:
-        #title = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
-       title = fake.text(max_nb_chars=30, ext_word_list=party_word_list)
+        title = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
+   #    title = fake.text(max_nb_chars=30, ext_word_list=party_word_list)
     formdata = {"title": title, "body": body, "inviteuser": inviteduser, "secret phrase": secret}
 
     if is_private:
