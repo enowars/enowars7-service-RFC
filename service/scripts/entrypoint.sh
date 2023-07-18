@@ -11,7 +11,8 @@ source /service/scripts/cleanup.sh
 if test -f "/service/instance/secret.txt"; then
 	:
 else
-	echo "$RANDOM+$RANDOM+$RANDOM" | shasum -a 256 | awk '{print $1}' > "/service/instance/secret.txt"
+	echo "$RANDOM+$RANDOM+$RANDOM" | shasum -a 256 | awk '{print $1}' > /service/instance/secret.txt
+	chmod +r /service/instance/secret.txt
 fi
 
 gunicorn -c "config/gunicorn.conf.py" "managedServiceProvider:create_app()"
