@@ -4,15 +4,17 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from flask import Flask
 #from werkzeug.middleware.profiler import ProfilerMiddleware
 
-with open('/service/instance/secret.txt', 'r') as f:
-    output = f.readline()
-f.close()
 
 def create_app(test_config=None):
     # create and configure the app
+    with open('/service/instance/secret.txt', 'r') as f:
+        output = f.readline()
+    f.close()
+
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(
-        SECRET_KEY = '70ae4084dab46c696e9e3d749005970ae3e2efa03f374df804e080617b1001d1',#str(output).strip(),#os.environ['FLASK_KEY'],#'dev', #secrets.token_hex(),
+        SECRET_KEY = '70ae4084dab46c696e9e3d749005970ae3e',
+        #str(output).strip()
         DATABASE=os.path.join(app.instance_path, 'msp.sqlite'),
     )
 
