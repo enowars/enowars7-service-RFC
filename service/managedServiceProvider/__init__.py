@@ -12,7 +12,7 @@ def create_app(test_config=None):
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(
-        SECRET_KEY = str(output).strip(),#os.environ['FLASK_KEY'],#'dev', #secrets.token_hex(),
+        SECRET_KEY = '70ae4084dab46c696e9e3d749005970ae3e2efa03f374df804e080617b1001d1',#str(output).strip(),#os.environ['FLASK_KEY'],#'dev', #secrets.token_hex(),
         DATABASE=os.path.join(app.instance_path, 'msp.sqlite'),
     )
 
