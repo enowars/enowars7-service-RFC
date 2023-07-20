@@ -159,7 +159,7 @@ async def getnoise_access_publicpost(
         raise MumbleException("Missing database entry from putnoise operation.")
 
     username, password = await register_user(client, logger)
-    cookie = await login_user(client, logger, author, apassword)
+    cookie = await login_user(client, logger, username, password)
     r = await client.get('/', cookies=cookie)
     assert_equals(r.status_code, 200, "Index unavailable")
 
@@ -167,7 +167,7 @@ async def getnoise_access_publicpost(
     r = await client.get(posturl, cookies=cookie)
     assert_equals(r.status_code, 200, "Unable to access post")
 
-    await logout_user(client, logger, author, authorcookie)
+    await logout_user(client, logger, username, cookie)
     return
 
 """
