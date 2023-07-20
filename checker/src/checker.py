@@ -136,7 +136,7 @@ async def putnoise_create_publicpost(
         logger: LoggerAdapter
 ) -> None:
 
-    username, password = await register_user(client, logger)
+    author, apassword = await register_user(client, logger)
     authorcookie = await login_user(client, logger, author, apassword)
 
     title, secret = await create_blogpost(client, logger, authorcookie, flag, is_private=False, is_hidden=False, inviteduser="", title="")
