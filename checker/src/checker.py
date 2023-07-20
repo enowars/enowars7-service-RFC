@@ -179,6 +179,39 @@ async def havoc_invalid_login(
     if r.status_code != 200:
         raise MumbleException("Unexpected status code in user login function")
     return
+
+@checker.havoc(2)
+async def havoc_invalid_endpoint(
+        db: ChainDB,
+        client: AsyncClient,
+        logger: LoggerAdapter
+) -> None:
+    r = await client.get("/test")
+    if r.status_code != 404:
+        raise MumbleException("Unintended endpoint available")
+    return
+
+@checker.havoc(3)
+async def havoc_unauth_accinfo(
+        db: ChainDB,
+        client: AsyncClient,
+        logger: LoggerAdapter
+) -> None:
+    r = await client.get("/auth/accountInfo")
+    if r.status_code != 302:
+        raise MumbleException("Missing forward on unauthorized endpoint access.")
+    return
+
+@checker.havoc(4)
+async def havoc_unauth_post_access(
+        db: ChainDB,
+        client: AsyncClient,
+        logger: LoggerAdapter
+) -> None:
+    r = await client.get("/auth/accessblogpost/1")
+    if r.status_code != 302:
+        raise MumbleException("Missing forward on unauthorized endpoint access.")
+    return
 """
 END HAVOC
 """
