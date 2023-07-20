@@ -123,7 +123,9 @@ async def getnoise_login_accinfo_logout(
     r = await client.get('/auth/accountInfo', cookies=cookie)
     assert_equals(r.status_code, 200, "User unable to access acount Information")
 
-    await logout_user(client, logger, username, cookie)
+    r = await logout_user(client, logger, username, cookie)
+    if r.status_code != 302:
+        raise MumbleException("Unexpected status code on logout.")
     return
 
 
@@ -471,11 +473,12 @@ class Totp_Client:
 
 
 async def register_user(client: AsyncClient, logger):
-    fake = Faker()
+    fake = Faker(['en-US', 'de-DE'])
+    Faker.seed(random.randint(0,999))
     username = ""
-    #while not username or len(username) < 3 or len(username) > 35:
-     #   username = fake.first_name() + str(random.randint(0, 99))
-    username = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(12))
+    while not username or len(username) < 3 or len(username) > 35:
+        username = fake.first_name() + str(random.randint(0, 999))
+    #username = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(12))
     password = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
     logger.debug(f"New user registration. Username: {username}, Password: {password}")
 
@@ -498,14 +501,19 @@ async def create_blogpost(client, logger, cookie, flag, is_private, is_hidden, i
                        'the best', 'social', 'gathering', 'celebrate', 'birthday', 'anniversary', 'club',
                        'fiesta', 'dance', 'bash', 'fete', 'beach', 'reunion', 'after party', 'techno', 'house',
                        'tekktonik', 'classic', 'pool party', 'surprise', 'underground', 'Birgit und Bier',
-                       'Tresor', 'Berghain', 'East', 'Anomalie', 'Club-Ost', 'Panorama Bar', 'Sisyphos',
-                       'KitKat', 'Carnival', 'Berlin']
+                       'Tresor', 'Berghain', 'East', 'Anomalie', 'ClubOst', 'Panorama Bar', 'Sisyphos',
+                       'KitKat', 'Carnival', 'Berlin', 'Latex', 'Leather', 'Zwanglos', 'Unique', 'Queer',
+                       'lavish', 'Alte Münze', 'Trompete', 'Holiday', 'Save-the-date', 'Gabba', 'Goa',
+                       'Stomp', 'Psytrance' ]
     fake = Faker()
+    Faker.seed(random.randint(0,999))
+
     secret = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
     body = flag
     if not title:
-        title = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
-   #    title = fake.text(max_nb_chars=30, ext_word_list=party_word_list)
+        #title = ''.join(secrets.choice(string.ascii_letters+string.digits) for i in range(25))
+        title = fake.text(max_nb_chars=35, ext_word_list=party_word_list)
+        title = title + "vol" + str(random.randint(0,10))
     formdata = {"title": title, "body": body, "inviteuser": inviteduser, "secret phrase": secret}
 
     if is_private:
@@ -517,7 +525,7 @@ async def create_blogpost(client, logger, cookie, flag, is_private, is_hidden, i
     if isexploit:
         assert_equals(r.status_code, 200, "Blogpost creation error in create_blogpost function -- for exploit")
     else:
-        assert_equals(r.status_code, 302, "Blogpost creation error in create_blogpost function.")
+        assert_equals(r.status_code, 302, f"Blogpost:{title} creation error in create_blogpost function.")
         if is_hidden:
             f = await client.get(r.headers['Location'], cookies=cookie)
             # parse html to get the post_id
