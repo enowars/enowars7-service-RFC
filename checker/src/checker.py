@@ -139,7 +139,7 @@ async def putnoise_create_privpost(
     author, apassword = await register_user(client, logger)
     authorcookie = await login_user(client, logger, author, apassword)
 
-    title, secret = await create_blogpost(client, logger, authorcookie, flag, is_private=True, is_hidden=False, inviteduser="", title="")
+    title, secret = await create_blogpost(client, logger, authorcookie, flag="no flag", is_private=True, is_hidden=False, inviteduser="", title="")
     await logout_user(client, logger, author, authorcookie)
 
     await db.set("title", (title))
