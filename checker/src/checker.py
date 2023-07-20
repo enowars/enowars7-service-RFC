@@ -101,8 +101,10 @@ async def putnoise_register(
         client: AsyncClient,
         logger: LoggerAdapter
 ) -> None:
+
     username, password = await register_user(client, logger)
     await db.set("reg_info", (username, password))
+    return
 
 
 @checker.getnoise(0)
@@ -115,38 +117,58 @@ async def getnoise_login_logout(
     try:
         username, password = await db.get("reg_info")
     except KeyError:
-        raise MumbleException("Missing database entry from putflag operation.")
+        raise MumbleException("Missing database entry from noise operation.")
 
     cookie = await login_user(client, logger, username, password)
     r = await client.get('/auth/accountInfo', cookies=cookie)
     assert_equals(r.status_code, 200, "User unable to access acount Information")
 
+    r = await logout_user(client, logger, author, authorcookie)
+    if r.status_code != 302:
+        raise MumbleException("Unexpected status code on logout.")
+    return
 
-#@checker.putnoise(1)
-#async def putnoise_cre(
-#        db: ChainDB,
-#        client: AsyncClient,
-#        logger: LoggerAdapter
-#) -> None:
-#    username, password = await register_user(client, logger)
-#    await db.set("reg_info", (username, password))
+
+@checker.putnoise(1)
+async def putnoise_create_publicpost(
+        db: ChainDB,
+        client: AsyncClient,
+        logger: LoggerAdapter
+) -> None:
+
+    username, password = await register_user(client, logger)
+    authorcookie = await login_user(client, logger, author, apassword)
+
+    title, secret = await create_blogpost(client, logger, authorcookie, flag, is_private=False, is_hidden=False, inviteduser="", title="")
+    await logout_user(client, logger, author, authorcookie)
+
+    await db.set("title", (title))
+    return
+
 #
-#
-#@checker.getnoise(1)
-#async def getnoise_login_logo(
-#        db: ChainDB,
-#        client: AsyncClient,
-#        logger: LoggerAdapter
-#) -> None:
-#
-#    try:
-#        username, password = await db.get("reg_info")
-#    except KeyError:
-#        raise MumbleException("Missing database entry from putflag operation.")
-#
-#    cookie = await login_user(client, logger, username, password)
-#    r = await client.get('/auth/accountInfo', cookies=cookie)
-#    assert_equals(r.status_code, 200, "User unable to access acount Information")
+@checker.getnoise(1)
+async def getnoise_access_publicpost(
+        db: ChainDB,
+        client: AsyncClient,
+        logger: LoggerAdapter
+) -> None:
+
+    try:
+        title = await db.get("title")
+    except KeyError:
+        raise MumbleException("Missing database entry from putnoise operation.")
+
+    username, password = await register_user(client, logger)
+    cookie = await login_user(client, logger, author, apassword)
+    r = await client.get('/', cookies=cookie)
+    assert_equals(r.status_code, 200, "Index unavailable")
+
+    posturl = find_title_on_index(r, title)
+    r = await client.get(posturl, cookies=cookie)
+    assert_equals(r.status_code, 200, "Unable to access post")
+
+    await logout_user(client, logger, author, authorcookie)
+    return
 
 """
 END NOISE
@@ -212,6 +234,18 @@ async def havoc_unauth_post_access(
     if r.status_code != 302:
         raise MumbleException("Missing forward on unauthorized endpoint access.")
     return
+
+@checker.havoc(5)
+async def havoc_unauth_post_creation(
+        db: ChainDB,
+        client: AsyncClient,
+        logger: LoggerAdapter
+) -> None:
+    r = await client.get("/create")
+    if r.status_code != 302:
+        raise MumbleException("Missing forward on unauthorized endpoint access.")
+    return
+
 """
 END HAVOC
 """
@@ -536,13 +570,33 @@ def getdata_from_accountinfo(response, client, logger, title):
         raise MumbleException(msg)
 
 
+def find_title_on_index(r, title):
+    try:
+        html = BeautifulSoup(r.text, "html.parser")
+        el_article = html.find_all('article', attrs={"class":"post"})
+        if len(el_article) < 1:
+            raise MumbleException("No article to apply exploit to...")
+
+        for article in el_article:
+            el_h1 = article.find('h1')
+
+            if el_h1.string == title:
+                el_a = article.find('a', attrs={"class":"action"})
+                posturl = el_a['href']
+                return posturl
+    except:
+        msg = f"post with title: {title} could not be found"
+        raise MumbleException(msg)
+
+
+
 #find timestamp and postid for post given by title
 def finddata_for_exploit(r, username, title):
     try:
         html = BeautifulSoup(r.text, "html.parser")
         el_article = html.find_all('article', attrs={"class":"post"})
         if len(el_article) < 1:
-            raise MumbleException("No article to apply explouit to...")
+            raise MumbleException("No article to apply exploit to...")
 
         for article in el_article:
             el_h1 = article.find('h1')
@@ -556,7 +610,7 @@ def finddata_for_exploit(r, username, title):
                 posturl = el_a['href']
                 return time, posturl
     except:
-        msg = f"post with id {postid} could not be found"
+        msg = f"post with title: {title} could not be found"
         raise MumbleException(msg)
 
 
