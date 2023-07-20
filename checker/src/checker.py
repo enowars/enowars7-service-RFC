@@ -108,7 +108,7 @@ async def putnoise_register(
 
 
 @checker.getnoise(0)
-async def getnoise_login_logout(
+async def getnoise_login_accinfo_logout(
         db: ChainDB,
         client: AsyncClient,
         logger: LoggerAdapter
@@ -123,7 +123,7 @@ async def getnoise_login_logout(
     r = await client.get('/auth/accountInfo', cookies=cookie)
     assert_equals(r.status_code, 200, "User unable to access acount Information")
 
-    r = await logout_user(client, logger, author, authorcookie)
+    r = await logout_user(client, logger, username, cookie)
     if r.status_code != 302:
         raise MumbleException("Unexpected status code on logout.")
     return
