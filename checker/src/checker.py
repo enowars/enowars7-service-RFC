@@ -156,10 +156,29 @@ END NOISE
 START HAVOC
 """
 
-#@checker.havoc(0)
-#async def havoc():
-#    return
+@checker.havoc(0)
+async def havoc_invalid_register(
+        db: ChainDB,
+        client: AsyncClient,
+        logger: LoggerAdapter
+) -> None:
+    formdata = {"username": "letsfetz9999", "password": "123", "rpassword": "123"}
+    r = await client.post("/auth/register", data=formdata)
+    if r.status_code != 200:
+        raise MumbleException("Unexpected status code in user registration function")
+    return
 
+@checker.havoc(1)
+async def havoc_invalid_login(
+        db: ChainDB,
+        client: AsyncClient,
+        logger: LoggerAdapter
+) -> None:
+    formdata = {"username": "letsfetz9999", "password": "123"}
+    r = await client.post("/auth/login", data=formdata)
+    if r.status_code != 200:
+        raise MumbleException("Unexpected status code in user login function")
+    return
 """
 END HAVOC
 """
