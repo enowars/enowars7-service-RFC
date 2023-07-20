@@ -130,7 +130,7 @@ async def getnoise_login_accinfo_logout(
 
 
 @checker.putnoise(1)
-async def putnoise_create_publicpost(
+async def putnoise_create_privpost(
         db: ChainDB,
         client: AsyncClient,
         logger: LoggerAdapter
@@ -139,7 +139,7 @@ async def putnoise_create_publicpost(
     author, apassword = await register_user(client, logger)
     authorcookie = await login_user(client, logger, author, apassword)
 
-    title, secret = await create_blogpost(client, logger, authorcookie, flag, is_private=False, is_hidden=False, inviteduser="", title="")
+    title, secret = await create_blogpost(client, logger, authorcookie, flag, is_private=True, is_hidden=False, inviteduser="", title="")
     await logout_user(client, logger, author, authorcookie)
 
     await db.set("title", (title))
@@ -147,7 +147,7 @@ async def putnoise_create_publicpost(
 
 #
 @checker.getnoise(1)
-async def getnoise_access_publicpost(
+async def getnoise_access_privpost(
         db: ChainDB,
         client: AsyncClient,
         logger: LoggerAdapter
