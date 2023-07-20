@@ -9,12 +9,12 @@ def create_app(test_config=None):
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
 
-    keyfile = os.path.join(app.instance_path, 'secret.txt')
-    with open(keyfile, 'r') as f:
-        output = f.readline()
-    f.close()
+#    keyfile = os.path.join(app.instance_path, 'secret.txt')
+#    with open(keyfile, 'r') as f:
+#        output = f.readline()
+#    f.close()
     app.config.from_mapping(
-        SECRET_KEY = str(output).strip(),
+        SECRET_KEY = 'this is a very secret key',#str(output).strip(),
         DATABASE=os.path.join(app.instance_path, 'msp.sqlite'),
     )
 
