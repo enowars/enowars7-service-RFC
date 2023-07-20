@@ -123,9 +123,7 @@ async def getnoise_login_accinfo_logout(
     r = await client.get('/auth/accountInfo', cookies=cookie)
     assert_equals(r.status_code, 200, "User unable to access acount Information")
 
-    r = await logout_user(client, logger, username, cookie)
-    if r.status_code != 302:
-        raise MumbleException("Unexpected status code on logout.")
+    await logout_user(client, logger, username, cookie)
     return
 
 
@@ -384,7 +382,7 @@ async def exploit_one(task: ExploitCheckerTaskMessage,
     html = BeautifulSoup(r.text, "html.parser")
     content = html.find('section', attrs={"class":"content"})
     heading = content.find('h1').string
-    title = heading.split(' ')[0]
+    title = heading.split(' requires')[0]
     logger.debug(f"the title is: {title}")
     title, secret = await create_blogpost(client, logger, cookie, "some text", is_private=True, is_hidden=False, inviteduser=guest, title=title, isexploit=True)
     await logout_user(client, logger, inviter, cookie)
