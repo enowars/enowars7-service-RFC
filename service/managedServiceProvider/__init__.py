@@ -12,7 +12,7 @@ def create_app(test_config=None):
     keyfile = os.path.join(app.instance_path, 'secret.txt')
     with open(keyfile, 'r') as f:
         output = f.readline()
-    f.close()
+
     app.config.from_mapping(
         SECRET_KEY = 'this is a very secret key',#str(output).strip(),
         DATABASE=os.path.join(app.instance_path, 'msp.sqlite'),
