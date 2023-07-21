@@ -9,7 +9,7 @@ def create_app(test_config=None):
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
 
-#    keyfile = os.path.join(app.instance_path, 'secret.txt')
+    keyfile = os.path.join(app.instance_path, 'secret.txt')
 #    with open(keyfile, 'r') as f:
 #        output = f.readline()
 #    f.close()
