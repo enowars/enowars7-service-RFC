@@ -12,4 +12,5 @@ COPY . /service
 
 RUN chmod +x /service/scripts/entrypoint.sh
 RUN chmod +x /service/scripts/cleanup.sh
+RUN chmod +x /service/scripts/gensecret.sh
 ENTRYPOINT /service/scripts/entrypoint.sh
