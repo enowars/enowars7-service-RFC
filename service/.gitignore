@@ -6,6 +6,7 @@
 __pycache__/
 
 instance/msp.sqlite
+instance/secret.txt
 
 .pytest_cache/
 .coverage
