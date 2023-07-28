@@ -1,3 +1,5 @@
+# RFC - A TOTP-secured event-blogging platform  
+
 ## RFC-technicalities in a nutshell
 - RFC is a Python based web service that is utilizing the flask framework
 - The service uses the Gunicorn WSGI server, which is running behind a nginx reverse proxy
@@ -6,7 +8,6 @@
 - Computation of Time-based One-time Passwords is done in accordance to RFC 6238
 
 ![Service Architecture](./pictures/architecture.png?raw=true "The application architecture")
-
 
 ## Service Features
 - The RFC service is an event-blogging platform
@@ -29,10 +30,18 @@
 
 ## Vulnerability One - Default Key not updated in Private Posts
 **Flagstore: Private Posts**  
-When users create private posts, by ticking the appropriate button during the creation process, they need to specify a secret phrase. The default secret phrase, which is displayed, is "Correct horse battery staple!". Users **must** specify a different phrase.
-The phrase a user chooses is however not updated in the database.
-Recall that 
+- When users create private posts, by ticking the appropriate button during the creation process, they need to specify a secret phrase
+- The secret phrase will be used in the access-authorization process, namely TOTP validation
+- The default secret phrase for posts, which is displayed during the creation process, is "Correct horse battery staple!"
+- However, users **must** specify a different phrase during post-creation. If the default value is not changed, the creation-process **will fail**
+- The issue lies in the database query that creates a new event.
 
+### Vulnerability in the Code
+![Vulnerability One](./pictures/vuln1.png?raw=true "Vulnerability One")
+- We see that the *INSERT INTO* query lacks the required *key* parameter
+
+### Automated Exploit Script (annotated)
+![Exploit One](./pictures/exploit1.png?raw=true "Exploit One")
 
 
 ## Vulnerability Two - Unauthorized Invitations
@@ -45,5 +54,9 @@ Titles must be unique, which is why Bob is not successful in creating the event 
 - Chris can now login and, when going to his */auth/accountInfo page, sees an accurate timestamp and the secret event key
 - Chris can now use this information to calculate valid TOTPs
 
+### Vulnerability in the Code
+![Vulnerability Two](./pictures/vuln2.png?raw=true "Vulnerability Two")
+- Looking at the code, we see the issue lies in the error handling. The errors are caught but not handled appropriately. This allows the invitations to be processed, even when the *insert_event(...)* function throws an error
 
-
+### Automated Exploit Script (annotated)
+![Exploit Two](./pictures/exploit2.png?raw=true "Exploit Two")
