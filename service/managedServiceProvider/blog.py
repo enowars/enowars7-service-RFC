@@ -113,9 +113,9 @@ def insert_event(is_public, is_hidden, is_private, title, body, postkey):
         try:
             db = get_db()
             db.execute(
-                'INSERT INTO post (title, body, author_id, is_private, is_hidden)'
-                ' VALUES (?, ?, ?, ?, ?)',
-                (title, body, g.user['id'], is_private, is_hidden)
+                'INSERT INTO post (title, body, author_id, key, is_private, is_hidden)'
+                ' VALUES (?, ?, ?, ?, ?, ?)',
+                (title, body, g.user['id'], postkey, is_private, is_hidden)
             )
             db.commit()
         except:
@@ -191,6 +191,9 @@ def create():
 
             if error is None:
                 error = update_user_post_count(query)
+            else:
+                flash(error)
+                render_template('blog/create.html')
 
             if len(invited) != 0:
                 error = handle_invite(invited, title, error)
